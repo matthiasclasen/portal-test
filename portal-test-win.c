@@ -11,8 +11,11 @@ struct _PortalTestWin
   GtkWidget *sandbox_status;
   GtkWidget *network_status;
   GtkWidget *monitor_name;
+  GtkWidget *resolver_name;
+  GtkWidget *proxies;
 
   GNetworkMonitor *monitor;
+  GProxyResolver *resolver;
 };
 
 struct _PortalTestWinClass
@@ -51,7 +54,8 @@ static void
 portal_test_win_init (PortalTestWin *win)
 {
   const char *status;
-  g_autofree char *name = NULL;
+  g_auto(GStrv) proxies;
+  g_autofree char *proxy;
 
   gtk_widget_init_template (GTK_WIDGET (win));
 
@@ -62,10 +66,16 @@ portal_test_win_init (PortalTestWin *win)
   gtk_label_set_label (GTK_LABEL (win->sandbox_status), status);
 
   win->monitor = g_network_monitor_get_default ();
-  name = g_strdup_printf ("(%s)", G_OBJECT_TYPE_NAME (win->monitor));
-  gtk_label_set_label (GTK_LABEL (win->monitor_name), name);
+  gtk_label_set_label (GTK_LABEL (win->monitor_name), G_OBJECT_TYPE_NAME (win->monitor));
   g_signal_connect_swapped (win->monitor, "notify", G_CALLBACK (update_network_status), win);
   update_network_status (win);
+
+  win->resolver = g_proxy_resolver_get_default ();
+  gtk_label_set_label (GTK_LABEL (win->resolver_name), G_OBJECT_TYPE_NAME (win->resolver));
+
+  proxies = g_proxy_resolver_lookup (win->resolver, "http://www.flatpak.org", NULL, NULL);
+  proxy = g_strjoinv (", ", proxies);
+  gtk_label_set_label (GTK_LABEL (win->proxies), proxy);
 }
 
 static gboolean
@@ -120,6 +130,8 @@ portal_test_win_class_init (PortalTestWinClass *class)
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, sandbox_status);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, network_status);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, monitor_name);
+  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, proxies);
+  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, resolver_name);
 }
 
 GtkApplicationWindow *

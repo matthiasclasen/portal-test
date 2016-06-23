@@ -157,6 +157,7 @@
         <child>
           <object class="GtkLabel" id="monitor_name">
             <property name="visible">1</property>
+            <property name="xalign">0</property>
           </object>
           <packing>
             <property name="left-attach">1</property>
@@ -166,6 +167,7 @@
         <child>
           <object class="GtkLabel" id="network_status">
             <property name="visible">1</property>
+            <property name="xalign">0</property>
           </object>
           <packing>
             <property name="left-attach">2</property>
@@ -174,6 +176,39 @@
           </packing>
         </child>
 
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">1</property>
+            <property name="halign">end</property>
+            <property name="label">Proxy</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">5</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel" id="resolver_name">
+            <property name="visible">1</property>
+            <property name="xalign">0</property>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">5</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel" id="proxies">
+            <property name="visible">1</property>
+            <property name="xalign">0</property>
+          </object>
+          <packing>
+            <property name="left-attach">2</property>
+            <property name="top-attach">5</property>
+            <property name="width">2</property>
+          </packing>
+
+        </child>
       </object>
     </child>
   </template>
