@@ -43,6 +43,7 @@
         <child>
           <object class="GtkLabel">
             <property name="visible">1</property>
+            <property name="halign">end</property>
             <property name="label">Sandbox</property>
           </object>
           <packing>
@@ -64,6 +65,7 @@
         <child>
           <object class="GtkLabel">
             <property name="visible">1</property>
+            <property name="halign">end</property>
             <property name="label">File Chooser</property>
           </object>
           <packing>
@@ -97,6 +99,7 @@
         <child>
           <object class="GtkLabel">
             <property name="visible">1</property>
+            <property name="halign">end</property>
             <property name="label">Local</property>
           </object>
           <packing>
@@ -120,6 +123,7 @@
         <child>
           <object class="GtkLabel">
             <property name="visible">1</property>
+            <property name="halign">end</property>
             <property name="label">Links</property>
           </object>
           <packing>
@@ -142,6 +146,7 @@
         <child>
           <object class="GtkLabel">
             <property name="visible">1</property>
+            <property name="halign">end</property>
             <property name="label">Network</property>
           </object>
           <packing>
@@ -165,6 +170,7 @@
           <packing>
             <property name="left-attach">2</property>
             <property name="top-attach">4</property>
+            <property name="width">2</property>
           </packing>
         </child>
 
