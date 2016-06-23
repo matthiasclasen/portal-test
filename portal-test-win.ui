@@ -43,6 +43,27 @@
         <child>
           <object class="GtkLabel">
             <property name="visible">1</property>
+            <property name="label">Sandbox</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">0</property>
+          </packing>
+        </child>
+
+        <child>
+          <object class="GtkLabel" id="sandbox_status">
+            <property name="visible">1</property>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">0</property>
+          </packing>
+        </child>
+
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">1</property>
             <property name="label">File Chooser</property>
           </object>
           <packing>

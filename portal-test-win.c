@@ -7,6 +7,8 @@
 struct _PortalTestWin
 {
   GtkApplicationWindow parent;
+
+  GtkWidget *sandbox_status;
   GtkWidget *network_status;
   GtkWidget *monitor_name;
 
@@ -48,9 +50,16 @@ update_network_status (PortalTestWin *win)
 static void
 portal_test_win_init (PortalTestWin *win)
 {
+  const char *status;
   g_autofree char *name = NULL;
 
   gtk_widget_init_template (GTK_WIDGET (win));
+
+  if (g_file_test ("/run/user/1000/flatpak-info", G_FILE_TEST_EXISTS))
+    status = "confined";
+  else
+    status = "unconfined";
+  gtk_label_set_label (GTK_LABEL (win->sandbox_status), status);
 
   win->monitor = g_network_monitor_get_default ();
   name = g_strdup_printf ("(%s)", G_OBJECT_TYPE_NAME (win->monitor));
@@ -108,6 +117,7 @@ portal_test_win_class_init (PortalTestWinClass *class)
                                                "/org/gtk/portal-test/portal-test-win.ui");
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), activate_link);
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), save_dialog);
+  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, sandbox_status);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, network_status);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, monitor_name);
 }
