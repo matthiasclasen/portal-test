@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <!-- interface-requires gtk+ 3.8 -->
+  <object class="GtkFileChooserDialog" id="filechooser">
+    <property name="action">open</property>
+    <child type="action">
+      <object class="GtkButton" id="button_cancel">
+        <property name="visible">1</property>
+        <property name="label">_Cancel</property>
+        <property name="use-underline">1</property>
+      </object>
+    </child>
+    <child type="action">
+      <object class="GtkButton" id="button_ok">
+        <property name="visible">1</property>
+        <property name="can-default">1</property>
+        <property name="label">_Open</property>
+        <property name="use-underline">1</property>
+      </object>
+    </child>
+    <action-widgets>
+      <action-widget response="cancel">button_cancel</action-widget>
+      <action-widget response="ok" default="true">button_ok</action-widget>
+    </action-widgets>
+  </object>
+  <template class="PortalTestWin" parent="GtkApplicationWindow">
+    <property name="default-width">600</property>
+    <property name="default-height">400</property>
+    <child type="titlebar">
+      <object class="GtkHeaderBar">
+        <property name="visible">1</property>
+        <property name="title">Portal Test</property>
+        <property name="show-close-button">1</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkGrid">
+        <property name="visible">1</property>
+        <property name="margin">20</property>
+        <property name="row-spacing">10</property>
+        <property name="column-spacing">10</property>
+
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">1</property>
+            <property name="label">File chooser</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkFileChooserButton">
+            <property name="visible">1</property>
+            <property name="title">File Chooser Portal</property>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkFileChooserButton">
+            <property name="visible">1</property>
+            <property name="title">File Chooser Local</property>
+            <property name="dialog">filechooser</property>
+          </object>
+          <packing>
+            <property name="left-attach">2</property>
+            <property name="top-attach">0</property>
+          </packing>
+        </child>
+
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">1</property>
+            <property name="label">Links</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLinkButton">
+            <property name="visible">1</property>
+            <property name="uri">http://www.gnome.org</property>
+            <property name="label">GNOME</property>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLinkButton">
+            <property name="visible">1</property>
+            <property name="uri">http://www.gnome.org</property>
+            <property name="label">Again</property>
+            <signal name="activate-link" handler="activate_link"/>
+          </object>
+          <packing>
+            <property name="left-attach">2</property>
+            <property name="top-attach">1</property>
+          </packing>
+        </child>
+
+      </object>
+    </child>
+  </template>
+</interface>
