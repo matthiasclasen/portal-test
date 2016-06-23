@@ -74,11 +74,40 @@ activate_link (GtkLinkButton *button)
 }
 
 static void
+save_dialog (GtkWidget *button)
+{
+  gint res;
+  GtkFileChooserNative *dialog;
+  GtkWindow *parent;
+
+  parent = GTK_WINDOW (gtk_widget_get_toplevel (button));
+  dialog = gtk_file_chooser_native_new ("File Chooser Portal",
+                                        parent,
+                                        GTK_FILE_CHOOSER_ACTION_SAVE,
+                                        "_Save",
+                                        "_Cancel");
+
+  res = gtk_native_dialog_run (GTK_NATIVE_DIALOG (dialog));
+  g_print ("Saving file / Response: %d\n", res);
+  if (res == GTK_RESPONSE_OK)
+    {
+      char *filename;
+      GtkFileChooser *chooser = GTK_FILE_CHOOSER (dialog);
+      filename = gtk_file_chooser_get_filename (chooser);
+      g_print ("Saving file: %s\n", filename);
+      g_free (filename);
+    }
+
+  g_object_unref (dialog);
+}
+
+static void
 portal_test_win_class_init (PortalTestWinClass *class)
 {
   gtk_widget_class_set_template_from_resource (GTK_WIDGET_CLASS (class),
                                                "/org/gtk/portal-test/portal-test-win.ui");
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), activate_link);
+  gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), save_dialog);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, network_status);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, monitor_name);
 }
