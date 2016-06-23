@@ -1,0 +1,48 @@
+{
+    "app-id": "org.gnome.PortalTest",
+    "runtime": "org.gnome.Platform",
+    "runtime-version": "master",
+    "sdk": "org.gnome.Sdk",
+    "command": "portal-test",
+    "finish-args": [
+        "--socket=wayland"
+    ],
+    "build-options" : {
+        "cflags": "-O2 -g",
+        "cxxflags": "-O2 -g",
+        "env": {
+            "V": "1"
+        }
+    },
+    "modules": [
+        {
+            "name": "glib-portal",
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "git://git.gnome.org/glib",
+                    "branch": "portal"
+                }
+            ]
+        },
+        {
+            "name": "gtk+-portal",
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "git://git.gnome.org/gtk+",
+                    "branch": "wip/alexl/file-chooser-portal"
+                }
+            ]
+        },
+        {
+            "name": "portal-test",
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "https://github.com/matthiasclasen/portal-test.git`
+                }
+            ]
+        }
+    ]
+}
