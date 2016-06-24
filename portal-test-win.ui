@@ -147,11 +147,45 @@
           <object class="GtkLabel">
             <property name="visible">1</property>
             <property name="halign">end</property>
-            <property name="label">Network</property>
+            <property name="label">Screenshot</property>
           </object>
           <packing>
             <property name="left-attach">0</property>
             <property name="top-attach">4</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButton">
+            <property name="visible">1</property>
+            <property name="label">Screenshot</property>
+            <signal name="clicked" handler="take_screenshot"/>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">4</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkImage" id="image">
+            <property name="visible">1</property>
+            <property name="icon-name">image-missing</property>
+            <property name="icon-size">1</property>
+          </object>
+          <packing>
+            <property name="left-attach">2</property>
+            <property name="top-attach">4</property>
+          </packing>
+        </child>
+
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">1</property>
+            <property name="halign">end</property>
+            <property name="label">Network</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">5</property>
           </packing>
         </child>
         <child>
@@ -161,7 +195,7 @@
           </object>
           <packing>
             <property name="left-attach">1</property>
-            <property name="top-attach">4</property>
+            <property name="top-attach">5</property>
           </packing>
         </child>
         <child>
@@ -171,7 +205,7 @@
           </object>
           <packing>
             <property name="left-attach">2</property>
-            <property name="top-attach">4</property>
+            <property name="top-attach">5</property>
             <property name="width">2</property>
           </packing>
         </child>
@@ -184,7 +218,7 @@
           </object>
           <packing>
             <property name="left-attach">0</property>
-            <property name="top-attach">5</property>
+            <property name="top-attach">6</property>
           </packing>
         </child>
         <child>
@@ -194,7 +228,7 @@
           </object>
           <packing>
             <property name="left-attach">1</property>
-            <property name="top-attach">5</property>
+            <property name="top-attach">6</property>
           </packing>
         </child>
         <child>
@@ -204,7 +238,7 @@
           </object>
           <packing>
             <property name="left-attach">2</property>
-            <property name="top-attach">5</property>
+            <property name="top-attach">6</property>
             <property name="width">2</property>
           </packing>
 

@@ -3,6 +3,7 @@
 
 #include "portal-test-app.h"
 #include "portal-test-win.h"
+#include "xdg-desktop-portal-dbus.h"
 
 struct _PortalTestWin
 {
@@ -16,6 +17,11 @@ struct _PortalTestWin
 
   GNetworkMonitor *monitor;
   GProxyResolver *resolver;
+
+  GtkWidget *image;
+  XdpScreenshot *screenshot;
+  char *screenshot_handle;
+  guint screenshot_response_signal_id;
 };
 
 struct _PortalTestWinClass
@@ -54,12 +60,14 @@ static void
 portal_test_win_init (PortalTestWin *win)
 {
   const char *status;
-  g_auto(GStrv) proxies;
-  g_autofree char *proxy;
+  g_auto(GStrv) proxies = NULL;
+  g_autofree char *proxy = NULL;
+  g_autofree char *path = NULL;
 
   gtk_widget_init_template (GTK_WIDGET (win));
 
-  if (g_file_test ("/run/user/1000/flatpak-info", G_FILE_TEST_EXISTS))
+  path = g_strdup_printf ("/run/user/%d/flatpak-info", getpid ());
+  if (g_file_test (path, G_FILE_TEST_EXISTS))
     status = "confined";
   else
     status = "unconfined";
@@ -76,6 +84,12 @@ portal_test_win_init (PortalTestWin *win)
   proxies = g_proxy_resolver_lookup (win->resolver, "http://www.flatpak.org", NULL, NULL);
   proxy = g_strjoinv (", ", proxies);
   gtk_label_set_label (GTK_LABEL (win->proxies), proxy);
+
+  win->screenshot = xdp_screenshot_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
+                                                           G_DBUS_PROXY_FLAGS_NONE,
+                                                           "org.freedesktop.portal.Desktop",
+                                                           "/org/freedesktop/portal/desktop",
+                                                           NULL, NULL);
 }
 
 static gboolean
@@ -121,17 +135,98 @@ save_dialog (GtkWidget *button)
 }
 
 static void
+screenshot_response (GDBusConnection *connection,
+                     const char *sender_name,
+                     const char *object_path,
+                     const char *interface_name,
+                     const char *signal_name,
+                     GVariant *parameters,
+                     gpointer user_data)
+{
+  PortalTestWin *win = user_data;
+  guint32 response;
+  char *uri;
+  GVariant *options;
+
+  g_variant_get (parameters, "(u&s@a{sv})", &response, &uri, &options);
+
+  if (response == 0)
+    {
+      g_autoptr(GdkPixbuf) pixbuf = NULL;
+      g_autoptr(GError) error = NULL;
+
+      pixbuf = gdk_pixbuf_new_from_file_at_scale (uri, 60, 40, TRUE, &error);
+      if (error)
+        g_print ("failed to load screenshot: %s\n", error->message);
+      else
+        gtk_image_set_from_pixbuf (GTK_IMAGE (win->image), pixbuf);
+    }
+  else
+    g_print ("canceled\n");
+
+  if (win->screenshot_response_signal_id != 0)
+    g_dbus_connection_signal_unsubscribe (connection,
+                                          win->screenshot_response_signal_id);
+}
+
+static void
+screenshot_called (GObject *source,
+                   GAsyncResult *result,
+                   gpointer data)
+{
+  PortalTestWin *win = data;
+  g_autoptr(GError) error = NULL;
+  g_autofree char *handle = NULL;
+
+  if (!xdp_screenshot_call_screenshot_finish (win->screenshot, &handle, result, &error))
+    {
+      g_print ("error: %s\n", error->message);
+      return;
+    }
+
+  win->screenshot_response_signal_id =
+    g_dbus_connection_signal_subscribe (g_dbus_proxy_get_connection (G_DBUS_PROXY (win->screenshot)),
+                                        "org.freedesktop.portal.Desktop",
+                                        "org.freedesktop.portal.ScreenshotRequest",
+                                        "Response",
+                                        handle,
+                                        NULL,
+                                        G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE,
+                                        screenshot_response,
+                                        win, NULL);
+}
+
+static void
+take_screenshot (GtkWidget *button, PortalTestWin *win)
+{
+  GVariantBuilder opt_builder;
+  GVariant *options;
+
+  g_variant_builder_init (&opt_builder, G_VARIANT_TYPE_VARDICT);
+  options = g_variant_builder_end (&opt_builder);
+
+  xdp_screenshot_call_screenshot (win->screenshot,
+                                  "",
+                                  options,
+                                  NULL,
+                                  screenshot_called,
+                                  win);
+}
+
+static void
 portal_test_win_class_init (PortalTestWinClass *class)
 {
   gtk_widget_class_set_template_from_resource (GTK_WIDGET_CLASS (class),
                                                "/org/gtk/portal-test/portal-test-win.ui");
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), activate_link);
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), save_dialog);
+  gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), take_screenshot);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, sandbox_status);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, network_status);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, monitor_name);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, proxies);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, resolver_name);
+  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, image);
 }
 
 GtkApplicationWindow *
