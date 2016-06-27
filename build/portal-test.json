@@ -40,7 +40,7 @@
             "sources": [
                 {
                     "type": "git",
-                    "url": "file:///home/mclasen/Sources/portal-test"
+                    "url": "https://github.com/matthiasclasen/portal-test.git"
                 }
             ]
         }
