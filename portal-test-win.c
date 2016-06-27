@@ -145,17 +145,23 @@ screenshot_response (GDBusConnection *connection,
 {
   PortalTestWin *win = user_data;
   guint32 response;
-  char *uri;
   GVariant *options;
 
-  g_variant_get (parameters, "(u&s@a{sv})", &response, &uri, &options);
+  g_variant_get (parameters, "(u@a{sv})", &response, &options);
 
   if (response == 0)
     {
       g_autoptr(GdkPixbuf) pixbuf = NULL;
       g_autoptr(GError) error = NULL;
+      const char *uri;
+      g_autoptr(GFile) file = NULL;
+      g_autofree char *path = NULL;
 
-      pixbuf = gdk_pixbuf_new_from_file_at_scale (uri, 60, 40, TRUE, &error);
+      g_variant_lookup (options, "uri", "&s", &uri);
+      file = g_file_new_for_uri (uri);
+      path = g_file_get_path (file);
+
+      pixbuf = gdk_pixbuf_new_from_file_at_scale (path, 60, 40, TRUE, &error);
       if (error)
         g_print ("failed to load screenshot: %s\n", error->message);
       else
@@ -186,8 +192,8 @@ screenshot_called (GObject *source,
 
   win->screenshot_response_signal_id =
     g_dbus_connection_signal_subscribe (g_dbus_proxy_get_connection (G_DBUS_PROXY (win->screenshot)),
-                                        "org.freedesktop.portal.Desktop",
-                                        "org.freedesktop.portal.ScreenshotRequest",
+                                        "org.freedestkop.portal.Desktop",
+                                        "org.freedesktop.portal.Request",
                                         "Response",
                                         handle,
                                         NULL,
