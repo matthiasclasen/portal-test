@@ -14,6 +14,7 @@ struct _PortalTestWin
   GtkWidget *monitor_name;
   GtkWidget *resolver_name;
   GtkWidget *proxies;
+  GtkWidget *encoding;
 
   GNetworkMonitor *monitor;
   GProxyResolver *resolver;
@@ -107,11 +108,25 @@ activate_link (GtkLinkButton *button)
 }
 
 static void
-save_dialog (GtkWidget *button)
+save_dialog (GtkWidget *button, PortalTestWin *win)
 {
   gint res;
   GtkFileChooserNative *dialog;
   GtkWindow *parent;
+  const char *options[] = {
+    "current",
+    "iso8859-15",
+    "utf-16",
+    NULL
+  };
+  const char *labels[] = {
+    "Current Locale (UTF-8)",
+    "Western (ISO-8859-15)",
+    "Unicode (UTF-16)",
+    NULL,
+  };
+  const char *encoding;
+  int i;
 
   parent = GTK_WINDOW (gtk_widget_get_toplevel (button));
   dialog = gtk_file_chooser_native_new ("File Chooser Portal",
@@ -119,6 +134,10 @@ save_dialog (GtkWidget *button)
                                         GTK_FILE_CHOOSER_ACTION_SAVE,
                                         "_Save",
                                         "_Cancel");
+  gtk_file_chooser_native_add_choice (dialog,
+                                      "encoding", "Character Encoding:",
+                                      options, labels);
+  gtk_file_chooser_native_set_choice (dialog, "encoding", "current");
 
   res = gtk_native_dialog_run (GTK_NATIVE_DIALOG (dialog));
   g_print ("Saving file / Response: %d\n", res);
@@ -129,6 +148,15 @@ save_dialog (GtkWidget *button)
       filename = gtk_file_chooser_get_filename (chooser);
       g_print ("Saving file: %s\n", filename);
       g_free (filename);
+    }
+
+  gtk_label_set_label (GTK_LABEL (win->encoding), "");
+  encoding = gtk_file_chooser_native_get_choice (dialog, "encoding");
+  g_print ("encoding: %s\n", encoding);
+  for (i = 0; options[i]; i++)
+    {
+      if (g_strcmp0 (encoding, options[i]) == 0)
+        gtk_label_set_label (GTK_LABEL (win->encoding), labels[i]);
     }
 
   g_object_unref (dialog);
@@ -233,6 +261,7 @@ portal_test_win_class_init (PortalTestWinClass *class)
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, proxies);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, resolver_name);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, image);
+  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, encoding);
 }
 
 GtkApplicationWindow *

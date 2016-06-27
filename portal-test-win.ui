@@ -95,6 +95,15 @@
             <property name="top-attach">1</property>
           </packing>
         </child>
+        <child>
+          <object class="GtkLabel" id="encoding">
+            <property name="visible">1</property>
+          </object>
+          <packing>
+            <property name="left-attach">3</property>
+            <property name="top-attach">1</property>
+          </packing>
+        </child>
 
         <child>
           <object class="GtkLabel">
