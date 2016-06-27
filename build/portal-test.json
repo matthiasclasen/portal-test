@@ -31,7 +31,7 @@
                 {
                     "type": "git",
                     "url": "git://git.gnome.org/gtk+",
-                    "branch": "wip/alexl/file-chooser-portal"
+                    "branch": "portal"
                 }
             ]
         },
@@ -40,7 +40,7 @@
             "sources": [
                 {
                     "type": "git",
-                    "url": "https://github.com/matthiasclasen/portal-test.git"
+                    "url": "file:///home/mclasen/Sources/portal-test"
                 }
             ]
         }
