@@ -126,6 +126,9 @@ save_dialog (GtkWidget *button, PortalTestWin *win)
     NULL,
   };
   const char *encoding;
+  const char *label;
+  g_autofree char *text = NULL;
+  gboolean canonicalize;
   int i;
 
   parent = GTK_WINDOW (gtk_widget_get_toplevel (button));
@@ -139,6 +142,9 @@ save_dialog (GtkWidget *button, PortalTestWin *win)
                                       options, labels);
   gtk_file_chooser_native_set_choice (dialog, "encoding", "current");
 
+  gtk_file_chooser_native_add_option (dialog, "canonicalize", "Canonicalize");
+  gtk_file_chooser_native_set_option (dialog, "canonicalize", TRUE);
+
   res = gtk_native_dialog_run (GTK_NATIVE_DIALOG (dialog));
   g_print ("Saving file / Response: %d\n", res);
   if (res == GTK_RESPONSE_OK)
@@ -150,14 +156,18 @@ save_dialog (GtkWidget *button, PortalTestWin *win)
       g_free (filename);
     }
 
-  gtk_label_set_label (GTK_LABEL (win->encoding), "");
   encoding = gtk_file_chooser_native_get_choice (dialog, "encoding");
-  g_print ("encoding: %s\n", encoding);
+  canonicalize = gtk_file_chooser_native_get_option (dialog, "canonicalize");
+
+  label = "";
   for (i = 0; options[i]; i++)
     {
       if (g_strcmp0 (encoding, options[i]) == 0)
-        gtk_label_set_label (GTK_LABEL (win->encoding), labels[i]);
+        label = labels[i];
     }
+
+  text = g_strdup_printf ("%s%s", label, canonicalize ? " (canon)" : "");
+  gtk_label_set_label (GTK_LABEL (win->encoding), text);
 
   g_object_unref (dialog);
 }
