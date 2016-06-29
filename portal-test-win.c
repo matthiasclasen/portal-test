@@ -112,6 +112,7 @@ save_dialog (GtkWidget *button, PortalTestWin *win)
 {
   gint res;
   GtkFileChooserNative *dialog;
+  GtkFileChooser *chooser;
   GtkWindow *parent;
   const char *options[] = {
     "current",
@@ -128,7 +129,7 @@ save_dialog (GtkWidget *button, PortalTestWin *win)
   const char *encoding;
   const char *label;
   g_autofree char *text = NULL;
-  gboolean canonicalize;
+  const char *canonicalize;
   int i;
 
   parent = GTK_WINDOW (gtk_widget_get_toplevel (button));
@@ -137,27 +138,27 @@ save_dialog (GtkWidget *button, PortalTestWin *win)
                                         GTK_FILE_CHOOSER_ACTION_SAVE,
                                         "_Save",
                                         "_Cancel");
-  gtk_file_chooser_native_add_choice (dialog,
-                                      "encoding", "Character Encoding:",
-                                      options, labels);
-  gtk_file_chooser_native_set_choice (dialog, "encoding", "current");
+  chooser = GTK_FILE_CHOOSER (dialog);
+  gtk_file_chooser_add_choice (chooser,
+                               "encoding", "Character Encoding:",
+                               options, labels);
+  gtk_file_chooser_set_choice (chooser, "encoding", "current");
 
-  gtk_file_chooser_native_add_option (dialog, "canonicalize", "Canonicalize");
-  gtk_file_chooser_native_set_option (dialog, "canonicalize", TRUE);
+  gtk_file_chooser_add_choice (chooser, "canonicalize", "Canonicalize", NULL, NULL);
+  gtk_file_chooser_set_choice (chooser, "canonicalize", "true");
 
   res = gtk_native_dialog_run (GTK_NATIVE_DIALOG (dialog));
   g_print ("Saving file / Response: %d\n", res);
   if (res == GTK_RESPONSE_OK)
     {
       char *filename;
-      GtkFileChooser *chooser = GTK_FILE_CHOOSER (dialog);
       filename = gtk_file_chooser_get_filename (chooser);
       g_print ("Saving file: %s\n", filename);
       g_free (filename);
     }
 
-  encoding = gtk_file_chooser_native_get_choice (dialog, "encoding");
-  canonicalize = gtk_file_chooser_native_get_option (dialog, "canonicalize");
+  encoding = gtk_file_chooser_get_choice (chooser, "encoding");
+  canonicalize = gtk_file_chooser_get_choice (chooser, "canonicalize");
 
   label = "";
   for (i = 0; options[i]; i++)
@@ -166,7 +167,7 @@ save_dialog (GtkWidget *button, PortalTestWin *win)
         label = labels[i];
     }
 
-  text = g_strdup_printf ("%s%s", label, canonicalize ? " (canon)" : "");
+  text = g_strdup_printf ("%s%s", label, g_str_equal (canonicalize, "true") ? " (canon)" : "");
   gtk_label_set_label (GTK_LABEL (win->encoding), text);
 
   g_object_unref (dialog);
