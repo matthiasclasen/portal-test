@@ -45,5 +45,7 @@ portal_test_app_class_init (PortalTestAppClass *class)
 GApplication *
 portal_test_app_new (void)
 {
-  return g_object_new (portal_test_app_get_type (), NULL);
+  return g_object_new (portal_test_app_get_type (),
+                       "application-id", "org.gnome.PortalTest",
+                       NULL);
 }
