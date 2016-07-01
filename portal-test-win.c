@@ -15,6 +15,7 @@ struct _PortalTestWin
   GtkWidget *resolver_name;
   GtkWidget *proxies;
   GtkWidget *encoding;
+  GtkWidget *ack_image;
 
   GNetworkMonitor *monitor;
   GProxyResolver *resolver;
@@ -259,6 +260,27 @@ take_screenshot (GtkWidget *button, PortalTestWin *win)
 }
 
 static void
+notify_me (GtkButton *button, PortalTestWin *win)
+{
+  GtkApplication *app = gtk_window_get_application (GTK_WINDOW (win));
+  g_autoptr(GNotification) notification = NULL;
+
+  gtk_widget_hide (win->ack_image);
+
+  notification = g_notification_new ("Notify me");
+  g_notification_set_body (notification, "Really important information would ordinarily appear here");
+  g_notification_add_button (notification, "Yup", "app.ack");
+
+  g_application_send_notification (G_APPLICATION (app), "notification", notification);
+}
+
+void
+portal_test_win_ack (PortalTestWin *win)
+{
+  gtk_widget_show (win->ack_image);
+}
+
+static void
 portal_test_win_class_init (PortalTestWinClass *class)
 {
   gtk_widget_class_set_template_from_resource (GTK_WIDGET_CLASS (class),
@@ -266,6 +288,7 @@ portal_test_win_class_init (PortalTestWinClass *class)
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), activate_link);
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), save_dialog);
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), take_screenshot);
+  gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), notify_me);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, sandbox_status);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, network_status);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, monitor_name);
@@ -273,6 +296,7 @@ portal_test_win_class_init (PortalTestWinClass *class)
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, resolver_name);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, image);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, encoding);
+  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, ack_image);
 }
 
 GtkApplicationWindow *

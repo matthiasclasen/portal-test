@@ -42,10 +42,32 @@ portal_test_app_class_init (PortalTestAppClass *class)
   G_APPLICATION_CLASS (class)->activate = portal_test_app_activate;
 }
 
+static void
+acktivate (GSimpleAction *aciton,
+           GVariant *parameter,
+           gpointer user_data)
+{
+  GtkApplication *app = user_data;
+  GtkWindow *win;
+
+  win = gtk_application_get_active_window (app);
+  portal_test_win_ack (PORTAL_TEST_WIN (win));
+}
+
+static GActionEntry entries[] = {
+  { "ack", acktivate, NULL, NULL, NULL }
+};
+
 GApplication *
 portal_test_app_new (void)
 {
-  return g_object_new (portal_test_app_get_type (),
-                       "application-id", "org.gnome.PortalTest",
-                       NULL);
+  GApplication *app;
+
+  app = g_object_new (portal_test_app_get_type (),
+                      "application-id", "org.gnome.PortalTest",
+                      NULL);
+
+  g_action_map_add_action_entries (G_ACTION_MAP (app), entries, G_N_ELEMENTS (entries), app);
+
+  return app;
 }

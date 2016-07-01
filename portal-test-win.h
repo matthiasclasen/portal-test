@@ -7,3 +7,4 @@ G_DECLARE_FINAL_TYPE(PortalTestWin, portal_test_win, PORTAL, TEST_WIN, GtkApplic
 
 GType                    portal_test_win_get_type       (void);
 GtkApplicationWindow    *portal_test_win_new            (PortalTestApp *app);
+void                     portal_test_win_ack            (PortalTestWin *win);
