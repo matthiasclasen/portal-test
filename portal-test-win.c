@@ -1,5 +1,10 @@
 #include <gtk/gtk.h>
 #include <gio/gdesktopappinfo.h>
+#include <gio/gunixfdlist.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "portal-test-app.h"
 #include "portal-test-win.h"
@@ -8,7 +13,6 @@
 struct _PortalTestWin
 {
   GtkApplicationWindow parent;
-
   GtkWidget *sandbox_status;
   GtkWidget *network_status;
   GtkWidget *monitor_name;
@@ -232,7 +236,7 @@ screenshot_called (GObject *source,
 
   win->screenshot_response_signal_id =
     g_dbus_connection_signal_subscribe (g_dbus_proxy_get_connection (G_DBUS_PROXY (win->screenshot)),
-                                        "org.freedestkop.portal.Desktop",
+                                        "org.freedesktop.portal.Desktop",
                                         "org.freedesktop.portal.Request",
                                         "Response",
                                         handle,
@@ -280,6 +284,231 @@ portal_test_win_ack (PortalTestWin *win)
   gtk_widget_show (win->ack_image);
 }
 
+static GList *active_prints = NULL;
+
+typedef struct {
+  char *text;
+  PangoLayout *layout;
+  GList *page_breaks;
+  char *font;
+} PrintData;
+
+static void
+status_changed_cb (GtkPrintOperation *op,
+                   gpointer user_data)
+{
+  if (gtk_print_operation_is_finished (op))
+    {
+      active_prints = g_list_remove (active_prints, op);
+      g_object_unref (op);
+    }
+}
+
+static void
+begin_print (GtkPrintOperation *operation,
+             GtkPrintContext *context,
+             PrintData *print_data)
+{
+  PangoFontDescription *desc;
+  PangoLayoutLine *layout_line;
+  double width, height;
+  double page_height;
+  GList *page_breaks;
+  int num_lines;
+  int line;
+
+  width = gtk_print_context_get_width (context);
+  height = gtk_print_context_get_height (context);
+
+  print_data->layout = gtk_print_context_create_pango_layout (context);
+
+  desc = pango_font_description_from_string (print_data->font);
+  pango_layout_set_font_description (print_data->layout, desc);
+  pango_font_description_free (desc);
+
+  pango_layout_set_width (print_data->layout, width * PANGO_SCALE);
+  pango_layout_set_text (print_data->layout, print_data->text, -1);
+
+  num_lines = pango_layout_get_line_count (print_data->layout);
+
+  page_breaks = NULL;
+  page_height = 0;
+
+  for (line = 0; line < num_lines; line++)
+    {
+      PangoRectangle ink_rect, logical_rect;
+      double line_height;
+
+      layout_line = pango_layout_get_line (print_data->layout, line);
+      pango_layout_line_get_extents (layout_line, &ink_rect, &logical_rect);
+
+      line_height = logical_rect.height / 1024.0;
+
+      if (page_height + line_height > height)
+        {
+          page_breaks = g_list_prepend (page_breaks, GINT_TO_POINTER (line));
+          page_height = 0;
+        }
+
+      page_height += line_height;
+    }
+
+  page_breaks = g_list_reverse (page_breaks);
+  gtk_print_operation_set_n_pages (operation, g_list_length (page_breaks) + 1);
+
+  print_data->page_breaks = page_breaks;
+}
+
+static void
+draw_page (GtkPrintOperation *operation,
+           GtkPrintContext *context,
+           int page_nr,
+           PrintData *print_data)
+{
+  cairo_t *cr;
+  GList *pagebreak;
+  int start, end, i;
+  PangoLayoutIter *iter;
+  double start_pos;
+
+  if (page_nr == 0)
+    start = 0;
+  else
+    {
+      pagebreak = g_list_nth (print_data->page_breaks, page_nr - 1);
+      start = GPOINTER_TO_INT (pagebreak->data);
+    }
+
+  pagebreak = g_list_nth (print_data->page_breaks, page_nr);
+  if (pagebreak == NULL)
+    end = pango_layout_get_line_count (print_data->layout);
+  else
+    end = GPOINTER_TO_INT (pagebreak->data);
+
+  cr = gtk_print_context_get_cairo_context (context);
+
+  cairo_set_source_rgb (cr, 0, 0, 0);
+
+  i = 0;
+  start_pos = 0;
+  iter = pango_layout_get_iter (print_data->layout);
+  do
+    {
+      PangoRectangle   logical_rect;
+      PangoLayoutLine *line;
+      int              baseline;
+
+      if (i >= start)
+        {
+          line = pango_layout_iter_get_line (iter);
+
+          pango_layout_iter_get_line_extents (iter, NULL, &logical_rect);
+          baseline = pango_layout_iter_get_baseline (iter);
+
+          if (i == start)
+            start_pos = logical_rect.y / 1024.0;
+
+          cairo_move_to (cr, logical_rect.x / 1024.0, baseline / 1024.0 - start_pos);
+          pango_cairo_show_layout_line  (cr, line);
+        }
+      i++;
+    }
+  while (i < end &&
+         pango_layout_iter_next_line (iter));
+
+  pango_layout_iter_free (iter);
+}
+
+static void
+end_print (GtkPrintOperation *op,
+           GtkPrintContext *context,
+           PrintData *print_data)
+{
+  g_list_free (print_data->page_breaks);
+  print_data->page_breaks = NULL;
+  g_object_unref (print_data->layout);
+  print_data->layout = NULL;
+}
+
+static void
+print_done (GtkPrintOperation *op,
+            GtkPrintOperationResult res,
+            PrintData *print_data)
+{
+  GError *error = NULL;
+
+  if (res == GTK_PRINT_OPERATION_RESULT_ERROR)
+    {
+
+      GtkWidget *error_dialog;
+
+      gtk_print_operation_get_error (op, &error);
+
+      error_dialog = gtk_message_dialog_new (NULL,
+                                             GTK_DIALOG_DESTROY_WITH_PARENT,
+                                             GTK_MESSAGE_ERROR,
+                                             GTK_BUTTONS_CLOSE,
+                                             "Error printing file:\n%s",
+                                             error ? error->message : "no details");
+      g_signal_connect (error_dialog, "response", G_CALLBACK (gtk_widget_destroy), NULL);
+      gtk_widget_show (error_dialog);
+    }
+  else
+
+  g_free (print_data->text);
+  g_free (print_data->font);
+  g_free (print_data);
+  if (!gtk_print_operation_is_finished (op))
+    {
+      g_object_ref (op);
+      active_prints = g_list_append (active_prints, op);
+
+      /* This ref is unref:ed when we get the final state change */
+      g_signal_connect (op, "status-changed",
+                        G_CALLBACK (status_changed_cb), NULL);
+    }
+}
+
+static char *
+get_text (void)
+{
+  char *text;
+  g_autoptr(GError) error = NULL;
+
+  if (!g_file_get_contents ("portal-test-win.c", &text, NULL, &error))
+    {
+      g_warning ("Failed to load print text: %s", error->message);
+      text = g_strdup (error->message);
+    }
+
+  return text;
+}
+
+static void
+print_cb (GtkButton *button, PortalTestWin *win)
+{
+  GtkPrintOperation *print;
+  PrintData *print_data;
+
+  print_data = g_new0 (PrintData, 1);
+
+  print_data->text = get_text ();
+  print_data->font = g_strdup ("Sans 12");
+
+  print = gtk_print_operation_new ();
+
+  g_signal_connect (print, "begin-print", G_CALLBACK (begin_print), print_data);
+  g_signal_connect (print, "end-print", G_CALLBACK (end_print), print_data);
+  g_signal_connect (print, "draw-page", G_CALLBACK (draw_page), print_data);
+  g_signal_connect (print, "done", G_CALLBACK (print_done), print_data);
+
+  //gtk_print_operation_set_allow_async (print, TRUE);
+  gtk_print_operation_run (print, GTK_PRINT_OPERATION_ACTION_PRINT_DIALOG,
+                           GTK_WINDOW (win), NULL);
+
+  g_object_unref (print);
+}
+
 static void
 portal_test_win_class_init (PortalTestWinClass *class)
 {
@@ -289,6 +518,7 @@ portal_test_win_class_init (PortalTestWinClass *class)
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), save_dialog);
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), take_screenshot);
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), notify_me);
+  gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), print_cb);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, sandbox_status);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, network_status);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, monitor_name);
