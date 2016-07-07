@@ -79,7 +79,7 @@ portal_test_win_init (PortalTestWin *win)
 
   gtk_widget_init_template (GTK_WIDGET (win));
 
-  path = g_strdup_printf ("/run/user/%d/flatpak-info", getpid ());
+  path = g_build_filename (g_get_user_runtime_dir (), "flatpak-info", NULL);
   if (g_file_test (path, G_FILE_TEST_EXISTS))
     status = "confined";
   else
