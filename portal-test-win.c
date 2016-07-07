@@ -264,6 +264,7 @@ take_screenshot (GtkWidget *button, PortalTestWin *win)
   g_autofree char *parent_window_str = NULL;
 
   g_variant_builder_init (&opt_builder, G_VARIANT_TYPE_VARDICT);
+  g_variant_builder_add (&opt_builder, "{sv}", "modal", g_variant_new_boolean (TRUE));
   options = g_variant_builder_end (&opt_builder);
 
   parent_window = gtk_widget_get_window (GTK_WIDGET (win));
