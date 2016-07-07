@@ -205,16 +205,14 @@ screenshot_response (GDBusConnection *connection,
       g_autoptr(GdkPixbuf) pixbuf = NULL;
       g_autoptr(GError) error = NULL;
       const char *uri;
-      g_autoptr(GFile) file = NULL;
       g_autofree char *path = NULL;
 
       g_variant_lookup (options, "uri", "&s", &uri);
-      file = g_file_new_for_uri (uri);
-      path = g_file_get_path (file);
+      path = g_filename_from_uri (uri, NULL, NULL);
 
       pixbuf = gdk_pixbuf_new_from_file_at_scale (path, 60, 40, TRUE, &error);
       if (error)
-        g_print ("failed to load screenshot: %s\n", error->message);
+        g_print ("failed to load screenshot %s: %s\n", path, error->message);
       else
         gtk_image_set_from_pixbuf (GTK_IMAGE (win->image), pixbuf);
     }
