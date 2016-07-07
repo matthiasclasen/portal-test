@@ -55,6 +55,7 @@
         <child>
           <object class="GtkLabel" id="sandbox_status">
             <property name="visible">1</property>
+            <property name="xalign">0</property>
           </object>
           <packing>
             <property name="left-attach">1</property>
@@ -309,6 +310,60 @@
           <packing>
             <property name="left-attach">1</property>
             <property name="top-attach">8</property>
+          </packing>
+        </child>
+
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">1</property>
+            <property name="halign">end</property>
+            <property name="label">Inhibit</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">9</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="visible">1</property>
+            <child>
+              <object class="GtkCheckButton" id="inhibit_idle">
+                <property name="visible">1</property>
+                <property name="xalign">0</property>
+                <property name="label">Idle</property>
+                <signal name="toggled" handler="inhibit_changed"/>
+              </object>
+            </child>
+            <child>
+              <object class="GtkCheckButton" id="inhibit_logout">
+                <property name="visible">1</property>
+                <property name="xalign">0</property>
+                <property name="label">Logout</property>
+                <signal name="toggled" handler="inhibit_changed"/>
+              </object>
+            </child>
+            <child>
+              <object class="GtkCheckButton" id="inhibit_suspend">
+                <property name="visible">1</property>
+                <property name="xalign">0</property>
+                <property name="label">Suspend</property>
+                <signal name="toggled" handler="inhibit_changed"/>
+              </object>
+            </child>
+            <child>
+              <object class="GtkCheckButton" id="inhibit_switch">
+                <property name="visible">1</property>
+                <property name="xalign">0</property>
+                <property name="label">Switch</property>
+                <signal name="toggled" handler="inhibit_changed"/>
+              </object>
+            </child>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">9</property>
+            <property name="width">2</property>
           </packing>
         </child>
 

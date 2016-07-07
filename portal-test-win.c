@@ -28,6 +28,13 @@ struct _PortalTestWin
   XdpScreenshot *screenshot;
   char *screenshot_handle;
   guint screenshot_response_signal_id;
+
+  GtkWidget *inhibit_idle;
+  GtkWidget *inhibit_logout;
+  GtkWidget *inhibit_suspend;
+  GtkWidget *inhibit_switch;
+  guint inhibit_cookie;
+  GtkApplicationInhibitFlags inhibit_flags;
 };
 
 struct _PortalTestWinClass
@@ -510,6 +517,41 @@ print_cb (GtkButton *button, PortalTestWin *win)
 }
 
 static void
+inhibit_changed (GtkToggleButton *button, PortalTestWin *win)
+{
+  GtkApplication *app = gtk_window_get_application (GTK_WINDOW (win));
+  GtkApplicationInhibitFlags flags = 0;
+
+  if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (win->inhibit_logout)))
+    flags |= GTK_APPLICATION_INHIBIT_LOGOUT;
+  if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (win->inhibit_switch)))
+    flags |= GTK_APPLICATION_INHIBIT_SWITCH;
+  if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (win->inhibit_suspend)))
+    flags |= GTK_APPLICATION_INHIBIT_SUSPEND;
+  if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (win->inhibit_idle)))
+    flags |= GTK_APPLICATION_INHIBIT_IDLE;
+
+  if (win->inhibit_flags == flags)
+    return;
+
+  if (win->inhibit_cookie != 0)
+    {
+      gtk_application_uninhibit (app, win->inhibit_cookie);
+      win->inhibit_cookie = 0;
+    }
+
+  win->inhibit_flags = flags;
+
+  if (win->inhibit_flags != 0)
+    {
+      win->inhibit_cookie = gtk_application_inhibit (app,
+                                                     GTK_WINDOW (win),
+                                                     win->inhibit_flags,
+                                                     "Portal Testing");
+    }
+}
+
+static void
 portal_test_win_class_init (PortalTestWinClass *class)
 {
   gtk_widget_class_set_template_from_resource (GTK_WIDGET_CLASS (class),
@@ -519,6 +561,7 @@ portal_test_win_class_init (PortalTestWinClass *class)
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), take_screenshot);
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), notify_me);
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), print_cb);
+  gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), inhibit_changed);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, sandbox_status);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, network_status);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, monitor_name);
@@ -527,6 +570,10 @@ portal_test_win_class_init (PortalTestWinClass *class)
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, image);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, encoding);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, ack_image);
+  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, inhibit_idle);
+  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, inhibit_logout);
+  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, inhibit_suspend);
+  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, inhibit_switch);
 }
 
 GtkApplicationWindow *
