@@ -16,26 +16,6 @@
     },
     "modules": [
         {
-            "name": "glib-portal",
-            "sources": [
-                {
-                    "type": "git",
-                    "url": "git://git.gnome.org/glib",
-                    "branch": "portal"
-                }
-            ]
-        },
-        {
-            "name": "gtk+-portal",
-            "sources": [
-                {
-                    "type": "git",
-                    "url": "git://git.gnome.org/gtk+",
-                    "branch": "portal"
-                }
-            ]
-        },
-        {
             "name": "portal-test",
             "sources": [
                 {

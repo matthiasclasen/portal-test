@@ -39,6 +39,13 @@ struct _PortalTestWin
   GtkWidget *inhibit_switch;
   guint inhibit_cookie;
   GtkApplicationInhibitFlags inhibit_flags;
+
+  GtkWidget *location_toggle;
+  GtkWidget *location_label;
+  XdpLocation *location;
+  char *location_handle;
+  guint location_response_signal_id;
+  guint location_location_signal_id;
 };
 
 struct _PortalTestWinClass
@@ -107,6 +114,11 @@ portal_test_win_init (PortalTestWin *win)
                                                            "org.freedesktop.portal.Desktop",
                                                            "/org/freedesktop/portal/desktop",
                                                            NULL, NULL);
+  win->location = xdp_location_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
+                                                             G_DBUS_PROXY_FLAGS_NONE,
+                                                             "org.freedesktop.portal.Desktop",
+                                                             "/org/freedesktop/portal/desktop",
+                                                             NULL, NULL);
 }
 
 static gboolean
@@ -255,26 +267,36 @@ screenshot_called (GObject *source,
                                         win, NULL);
 }
 
-static void
-take_screenshot (GtkWidget *button, PortalTestWin *win)
+static char *
+parent_window_id (PortalTestWin *win)
 {
-  GVariantBuilder opt_builder;
-  GVariant *options;
   GdkWindow *parent_window;
-  g_autofree char *parent_window_str = NULL;
-
-  g_variant_builder_init (&opt_builder, G_VARIANT_TYPE_VARDICT);
-  g_variant_builder_add (&opt_builder, "{sv}", "modal", g_variant_new_boolean (TRUE));
-  options = g_variant_builder_end (&opt_builder);
+  char *parent_window_str = NULL;
 
   parent_window = gtk_widget_get_window (GTK_WIDGET (win));
 #ifdef GDK_WINDOWING_X11
   if (GDK_IS_X11_WINDOW (parent_window))
     parent_window_str = g_strdup_printf ("x11:%x", (guint32)gdk_x11_window_get_xid (parent_window));
+  else
 #endif
+    parent_window_str = g_strdup ("");
+
+  return parent_window_str;
+}
+
+static void
+take_screenshot (GtkWidget *button, PortalTestWin *win)
+{
+  GVariantBuilder opt_builder;
+  GVariant *options;
+  g_autofree char *parent_window_str = parent_window_id (win);
+
+  g_variant_builder_init (&opt_builder, G_VARIANT_TYPE_VARDICT);
+  g_variant_builder_add (&opt_builder, "{sv}", "modal", g_variant_new_boolean (TRUE));
+  options = g_variant_builder_end (&opt_builder);
 
   xdp_screenshot_call_screenshot (win->screenshot,
-                                  parent_window_str ? parent_window_str : "",
+                                  parent_window_str,
                                   options,
                                   NULL,
                                   screenshot_called,
@@ -563,6 +585,181 @@ inhibit_changed (GtkToggleButton *button, PortalTestWin *win)
 }
 
 static void
+location_location (GDBusConnection *connetion,
+                      const char *sender_name,
+                      const char *object_path,
+                      const char *interface_name,
+                      const char *signal_name,
+                      GVariant *parameters,
+                      gpointer data)
+{
+  PortalTestWin *win = data;
+  const char *handle;
+  g_autoptr(GVariant) dict = NULL;
+  char *text;
+  gdouble latitude;
+  gdouble longitude;
+
+  g_variant_get (parameters, "(&o@a{sv})", &handle, &dict);
+
+  g_assert (g_str_equal (handle, win->location_handle));
+
+  g_variant_lookup (dict, "Latitude", "d", &latitude);
+  g_variant_lookup (dict, "Longitude", "d", &longitude);
+
+  text = g_strdup_printf ("(%f, %f)", latitude, longitude);
+  gtk_label_set_label (GTK_LABEL (win->location_label), text);
+  g_free (text);
+}
+
+static void location_changed (GtkToggleButton *button, PortalTestWin *win);
+
+static void
+location_response (GDBusConnection *connection,
+                      const char *sender_name,
+                      const char *object_path,
+                      const char *interface_name,
+                      const char *signal_name,
+                      GVariant *parameters,
+                      gpointer user_data)
+{
+  PortalTestWin *win = user_data;
+  guint32 response;
+  GVariant *options;
+
+  g_variant_get (parameters, "(u@a{sv})", &response, &options);
+
+  if (response != 0)
+    {
+      g_signal_handlers_block_by_func (win->location_toggle, location_changed, win);
+      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (win->location_toggle), FALSE);
+      g_signal_handlers_unblock_by_func (win->location_toggle, location_changed, win);
+
+      g_free (win->location_handle);
+      win->location_handle = NULL;
+      if (win->location_location_signal_id != 0)
+        {
+          g_dbus_connection_signal_unsubscribe (connection,
+                                                win->location_location_signal_id);
+          win->location_location_signal_id = 0;
+        }
+
+      g_print ("location session start response: %d\n", response);
+    }
+
+  if (win->location_response_signal_id != 0)
+    {
+      g_dbus_connection_signal_unsubscribe (connection,
+                                            win->location_response_signal_id);
+      win->location_response_signal_id = 0;
+    }
+}
+
+static void
+location_called (GObject *source,
+                    GAsyncResult *result,
+                    gpointer data)
+{
+  PortalTestWin *win = data;
+  g_autoptr(GError) error = NULL;
+  g_autofree char *handle = NULL;
+  GVariantBuilder opt_builder;
+  g_autofree char *parent_window_str = parent_window_id (win);
+  GDBusConnection *bus = g_dbus_proxy_get_connection (G_DBUS_PROXY (win->location));
+  g_autofree char *token = NULL;
+  g_autofree char *sender = NULL;
+  g_autofree char *request_handle = NULL;
+  int i;
+
+  if (!xdp_location_call_create_session_finish (win->location, &handle, result, &error))
+    {
+      g_print ("error: %s\n", error->message);
+      return;
+    }
+
+  win->location_location_signal_id =
+    g_dbus_connection_signal_subscribe (bus,
+                                        "org.freedesktop.portal.Desktop",
+                                        "org.freedesktop.portal.Location",
+                                        "LocationUpdated",
+                                        "/org/freedesktop/portal/desktop",
+                                        NULL,
+                                        G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE,
+                                        location_location,
+                                        win, NULL);
+
+  token = g_strdup_printf ("blah%d", g_random_int_range (0, G_MAXINT));
+  /* +1 to skip the leading : */
+  sender = g_strdup (g_dbus_connection_get_unique_name (bus) + 1);
+  for (i = 0; sender[i]; i++)
+    if (sender[i] == '.')
+      sender[i] = '_';
+  request_handle = g_strconcat ("/org/freedesktop/portal/desktop/request/", sender, "/", token, NULL);
+
+  win->location_response_signal_id =
+        g_dbus_connection_signal_subscribe (bus,
+                                            "org.freedesktop.portal.Desktop",
+                                            "org.freedesktop.portal.Request",
+                                            "Response",
+                                            request_handle,
+                                            NULL,
+                                            G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE,
+                                            location_response,
+                                            win, NULL);
+
+  g_variant_builder_init (&opt_builder, G_VARIANT_TYPE_VARDICT);
+  g_variant_builder_add (&opt_builder, "{sv}", "handle_token", g_variant_new_string (token));
+  xdp_location_call_start (win->location,
+                           handle,
+                           parent_window_str,
+                           g_variant_builder_end (&opt_builder),
+                           NULL, NULL, NULL);
+
+  win->location_handle = g_strdup (handle);
+}
+
+static void
+location_changed (GtkToggleButton *button, PortalTestWin *win)
+{
+  if (gtk_toggle_button_get_active (button))
+    {
+      GVariantBuilder opt_builder;
+      g_autofree char *parent_window_str = parent_window_id (win);
+
+      g_variant_builder_init (&opt_builder, G_VARIANT_TYPE_VARDICT);
+      g_variant_builder_add (&opt_builder, "{sv}", "session_handle_token", g_variant_new_string ("s"));
+      xdp_location_call_create_session (win->location,
+                                        g_variant_builder_end (&opt_builder),
+                                        NULL,
+                                        location_called,
+                                        win);
+    }
+  else if (win->location_handle)
+    {
+      g_dbus_connection_call (g_dbus_proxy_get_connection (G_DBUS_PROXY (win->location)),
+                              "org.freedesktop.portal.Desktop",
+                              win->location_handle,
+                              "org.freedesktop.portal.Session",
+                              "Close",
+                              g_variant_new ("()"),
+                              NULL,
+                              G_DBUS_CALL_FLAGS_NONE,
+                              -1,
+                              NULL, NULL, NULL);
+      g_free (win->location_handle);
+      win->location_handle = NULL;
+      if (win->location_location_signal_id != 0)
+        {
+          g_dbus_connection_signal_unsubscribe (g_dbus_proxy_get_connection (G_DBUS_PROXY (win->location)),
+                                                win->location_location_signal_id);
+          win->location_location_signal_id = 0;
+        }
+
+      gtk_label_set_label (GTK_LABEL (win->location_label), "");
+    }
+}
+
+static void
 portal_test_win_class_init (PortalTestWinClass *class)
 {
   gtk_widget_class_set_template_from_resource (GTK_WIDGET_CLASS (class),
@@ -573,6 +770,7 @@ portal_test_win_class_init (PortalTestWinClass *class)
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), notify_me);
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), print_cb);
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), inhibit_changed);
+  gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), location_changed);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, sandbox_status);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, network_status);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, monitor_name);
@@ -585,6 +783,8 @@ portal_test_win_class_init (PortalTestWinClass *class)
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, inhibit_logout);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, inhibit_suspend);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, inhibit_switch);
+  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, location_toggle);
+  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, location_label);
 }
 
 GtkApplicationWindow *

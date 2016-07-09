@@ -28,7 +28,8 @@ $(dbus_built_sources): Makefile.am
 		--interface-prefix org.freedesktop.portal. 			\
 		--c-namespace Xdp                       			\
 		--generate-c-code xdg-desktop-portal-dbus               	\
-		$(srcdir)/org.freedesktop.portal.Screenshot.xml 		\
+		$(DESKTOP_PORTAL_INTERFACES_DIR)/org.freedesktop.portal.Screenshot.xml 		\
+		$(DESKTOP_PORTAL_INTERFACES_DIR)/org.freedesktop.portal.Location.xml 		\
 		$(NULL)
 
 bin_PROGRAMS = portal-test
