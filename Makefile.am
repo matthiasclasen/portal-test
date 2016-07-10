@@ -1,3 +1,4 @@
+AM_CPPFLAGS = -DPKGDATADIR=\"$(pkgdatadir)\"
 BUILT_SOURCES =
 EXTRA_DIST =
 
@@ -44,6 +45,8 @@ portal_test_SOURCES = 					\
 	xdg-desktop-portal-dbus.c			\
 	resources.h					\
 	resources.c
+
+pkgdata_DATA = test.txt
 
 desktopdir = $(datadir)/applications
 desktop_DATA = org.gnome.PortalTest.desktop
