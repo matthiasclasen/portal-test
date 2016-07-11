@@ -1,3 +1,5 @@
+#include <config.h>
+
 #include <gtk/gtk.h>
 #include <gio/gdesktopappinfo.h>
 #include <gio/gunixfdlist.h>
@@ -121,6 +123,20 @@ activate_link (GtkLinkButton *button)
 
   g_app_info_launch_uris (app, &uris, NULL, NULL);
   return TRUE;
+}
+
+static void
+open_local (GtkWidget *button, PortalTestWin *win)
+{
+  g_autoptr(GFile) file = NULL;
+  g_autofree char *uri = NULL;
+
+  file = g_file_new_for_path (PKGDATADIR "/test.txt");
+  uri = g_file_get_uri (file);
+
+  g_print ("opening %s\n", uri);
+
+  g_app_info_launch_default_for_uri (uri, NULL, NULL);
 }
 
 static void
@@ -569,6 +585,7 @@ portal_test_win_class_init (PortalTestWinClass *class)
                                                "/org/gtk/portal-test/portal-test-win.ui");
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), activate_link);
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), save_dialog);
+  gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), open_local);
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), take_screenshot);
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), notify_me);
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), print_cb);
