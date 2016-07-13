@@ -111,18 +111,17 @@ portal_test_win_init (PortalTestWin *win)
                                                            NULL, NULL);
 }
 
-static gboolean
-activate_link (GtkLinkButton *button)
+static void
+launch_done (GObject      *source,
+             GAsyncResult *result,
+             gpointer      data)
 {
-  GList uris;
-  g_autoptr(GAppInfo) app = NULL;
+  GAppLaunchContext *context = G_APP_LAUNCH_CONTEXT (source);
+  g_autofree char *uri = data;
+  g_autoptr(GError) error = NULL;
 
-  app = (GAppInfo *)g_desktop_app_info_new ("firefox.desktop");
-  uris.data = (gpointer)gtk_link_button_get_uri (button);
-  uris.next = NULL;
-
-  g_app_info_launch_uris (app, &uris, NULL, NULL);
-  return TRUE;
+  if (!g_app_info_launch_default_for_uri_finish (context, result, &error))
+    g_print ("opening %s failed: %s\n", uri, error->message);
 }
 
 static void
@@ -136,7 +135,7 @@ open_local (GtkWidget *button, PortalTestWin *win)
 
   g_print ("opening %s\n", uri);
 
-  g_app_info_launch_default_for_uri (uri, NULL, NULL);
+  g_app_info_launch_default_for_uri_async (uri, NULL, NULL, launch_done, g_strdup (uri));
 }
 
 static void
@@ -583,7 +582,6 @@ portal_test_win_class_init (PortalTestWinClass *class)
 {
   gtk_widget_class_set_template_from_resource (GTK_WIDGET_CLASS (class),
                                                "/org/gtk/portal-test/portal-test-win.ui");
-  gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), activate_link);
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), save_dialog);
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), open_local);
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), take_screenshot);
