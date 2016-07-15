@@ -4,6 +4,8 @@
 #include <gio/gdesktopappinfo.h>
 #include <gio/gunixfdlist.h>
 
+#include <gst/gst.h>
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -577,6 +579,40 @@ inhibit_changed (GtkToggleButton *button, PortalTestWin *win)
     }
 }
 
+static gboolean
+pipeline_stop (GstElement *pipeline)
+{
+  gst_element_set_state (pipeline, GST_STATE_NULL);
+  g_object_unref (pipeline);
+
+  return FALSE;
+}
+static void
+play_sound (gdouble frequency)
+{
+  GstElement *source, *sink;
+  GstElement *pipeline;
+
+  pipeline = gst_pipeline_new ("note");
+  source = gst_element_factory_make ("audiotestsrc", "source");
+  sink = gst_element_factory_make ("autoaudiosink", "output");
+
+  g_object_set (source, "freq", frequency, NULL);
+
+  gst_bin_add_many (GST_BIN (pipeline), source, sink, NULL);
+  gst_element_link (source, sink);
+
+  gst_element_set_state (pipeline, GST_STATE_PLAYING);
+
+  g_timeout_add (500, (GSourceFunc) pipeline_stop, pipeline);
+}
+
+static void
+play_clicked (GtkButton *button, PortalTestWin *win)
+{
+  play_sound (440.0);
+}
+
 static void
 portal_test_win_class_init (PortalTestWinClass *class)
 {
@@ -588,6 +624,7 @@ portal_test_win_class_init (PortalTestWinClass *class)
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), notify_me);
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), print_cb);
   gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), inhibit_changed);
+  gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), play_clicked);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, sandbox_status);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, network_status);
   gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, monitor_name);
