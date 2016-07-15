@@ -114,19 +114,6 @@ portal_test_win_init (PortalTestWin *win)
 }
 
 static void
-launch_done (GObject      *source,
-             GAsyncResult *result,
-             gpointer      data)
-{
-  GAppLaunchContext *context = G_APP_LAUNCH_CONTEXT (source);
-  g_autofree char *uri = data;
-  g_autoptr(GError) error = NULL;
-
-  if (!g_app_info_launch_default_for_uri_finish (context, result, &error))
-    g_print ("opening %s failed: %s\n", uri, error->message);
-}
-
-static void
 open_local (GtkWidget *button, PortalTestWin *win)
 {
   g_autoptr(GFile) file = NULL;
@@ -137,7 +124,7 @@ open_local (GtkWidget *button, PortalTestWin *win)
 
   g_print ("opening %s\n", uri);
 
-  g_app_info_launch_default_for_uri_async (uri, NULL, NULL, launch_done, g_strdup (uri));
+  g_app_info_launch_default_for_uri (uri, NULL, NULL);
 }
 
 static void
