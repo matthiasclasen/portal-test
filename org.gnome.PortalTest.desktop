@@ -2,3 +2,4 @@
 Name=Portal test
 Exec=portal-test
 Type=Application
+DBusActivatable=true
