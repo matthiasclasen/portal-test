@@ -50,3 +50,6 @@ pkgdata_DATA = test.txt
 
 desktopdir = $(datadir)/applications
 desktop_DATA = org.gnome.PortalTest.desktop
+
+servicedir = $(datadir)/dbus-1/services
+service_DATA = org.gnome.PortalTest.service
