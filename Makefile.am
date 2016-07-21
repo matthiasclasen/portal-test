@@ -1,4 +1,4 @@
-AM_CPPFLAGS = -DPKGDATADIR=\"$(pkgdatadir)\"
+AM_CPPFLAGS = -DPKGDATADIR=\"$(pkgdatadir)\" -DG_LOG_DOMAIN=\"PortalTest\"
 BUILT_SOURCES =
 EXTRA_DIST =
 

@@ -122,7 +122,7 @@ open_local (GtkWidget *button, PortalTestWin *win)
   file = g_file_new_for_path (PKGDATADIR "/test.txt");
   uri = g_file_get_uri (file);
 
-  g_print ("opening %s\n", uri);
+  g_message ("Opening '%s'", uri);
 
   g_app_info_launch_default_for_uri (uri, NULL, NULL);
 }
@@ -168,12 +168,12 @@ save_dialog (GtkWidget *button, PortalTestWin *win)
   gtk_file_chooser_set_choice (chooser, "canonicalize", "true");
 
   res = gtk_native_dialog_run (GTK_NATIVE_DIALOG (dialog));
-  g_print ("Saving file / Response: %d\n", res);
+  g_message ("Saving file / Response: %d", res);
   if (res == GTK_RESPONSE_OK)
     {
       char *filename;
       filename = gtk_file_chooser_get_filename (chooser);
-      g_print ("Saving file: %s\n", filename);
+      g_message ("Saving file: '%s'", filename);
       g_free (filename);
     }
 
@@ -220,12 +220,12 @@ screenshot_response (GDBusConnection *connection,
 
       pixbuf = gdk_pixbuf_new_from_file_at_scale (path, 60, 40, TRUE, &error);
       if (error)
-        g_print ("failed to load screenshot %s: %s\n", path, error->message);
+        g_warning ("Failed to load screenshot %s: %s", path, error->message);
       else
         gtk_image_set_from_pixbuf (GTK_IMAGE (win->image), pixbuf);
     }
   else
-    g_print ("canceled\n");
+    g_message ("Screenshot canceled");
 
   if (win->screenshot_response_signal_id != 0)
     g_dbus_connection_signal_unsubscribe (connection,
@@ -243,7 +243,7 @@ screenshot_called (GObject *source,
 
   if (!xdp_screenshot_call_screenshot_finish (win->screenshot, &handle, result, &error))
     {
-      g_print ("error: %s\n", error->message);
+      g_warning ("Screenshot error: %s", error->message);
       return;
     }
 
