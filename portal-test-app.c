@@ -29,10 +29,12 @@ portal_test_app_startup (GApplication *app)
 static void
 portal_test_app_activate (GApplication *app)
 {
-  GtkApplicationWindow *win;
+  GtkWindow *win;
 
-  win = portal_test_win_new (PORTAL_TEST_APP (app));
-  gtk_window_present (GTK_WINDOW (win));
+  win = gtk_application_get_active_window (GTK_APPLICATION (app));
+  if (!win)
+    win = GTK_WINDOW (portal_test_win_new (PORTAL_TEST_APP (app)));
+  gtk_window_present (win);
 }
 
 static void
