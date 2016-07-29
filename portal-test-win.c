@@ -159,6 +159,7 @@ save_dialog (GtkWidget *button, PortalTestWin *win)
                                         "_Save",
                                         "_Cancel");
   chooser = GTK_FILE_CHOOSER (dialog);
+#if GTK_CHECK_VERSION(3, 21, 4)
   gtk_file_chooser_add_choice (chooser,
                                "encoding", "Character Encoding:",
                                options, labels);
@@ -166,6 +167,7 @@ save_dialog (GtkWidget *button, PortalTestWin *win)
 
   gtk_file_chooser_add_choice (chooser, "canonicalize", "Canonicalize", NULL, NULL);
   gtk_file_chooser_set_choice (chooser, "canonicalize", "true");
+#endif
 
   res = gtk_native_dialog_run (GTK_NATIVE_DIALOG (dialog));
   g_message ("Saving file / Response: %d", res);
@@ -177,8 +179,10 @@ save_dialog (GtkWidget *button, PortalTestWin *win)
       g_free (filename);
     }
 
+#if GTK_CHECK_VERSION(3, 21, 4)
   encoding = gtk_file_chooser_get_choice (chooser, "encoding");
   canonicalize = gtk_file_chooser_get_choice (chooser, "canonicalize");
+#endif
 
   label = "";
   for (i = 0; options[i]; i++)
