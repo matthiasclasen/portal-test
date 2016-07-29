@@ -1,0 +1,7 @@
+[Unit]
+Description=Portal test
+
+[Service]
+BusName=org.gnome.PortalTest
+ExecStart=portal-test
+Type=dbus
