@@ -605,29 +605,70 @@ play_clicked (GtkButton *button, PortalTestWin *win)
 }
 
 static void
+handle_obtained (GdkWindow *window,
+                 const char *handle,
+                 gpointer user_data)
+{
+  PortalTestWin *win = user_data;
+
+  win->window_handle = g_strdup_printf ("wayland:%s", handle);
+}
+
+static gboolean
+obtain_handle (gpointer data)
+{
+  PortalTestWin *win = PORTAL_TEST_WIN (data);
+  GdkWindow *window;
+
+  window = gtk_widget_get_window (GTK_WIDGET (win));
+
+  if (GDK_IS_WAYLAND_WINDOW (window))
+    gdk_wayland_window_export_handle (window, handle_obtained, win, NULL);
+  else if (GDK_IS_X11_WINDOW (window))
+    win->window_handle = g_strdup_printf ("x11:%x", (guint32)gdk_x11_window_get_xid (window));
+
+  return G_SOURCE_REMOVE;
+}
+
+static void
+test_win_realize (GtkWidget *widget)
+{
+  PortalTestWin *win = PORTAL_TEST_WIN (widget);
+
+  GTK_WIDGET_CLASS (portal_test_win_parent_class)->realize (widget);
+
+  g_idle_add (obtain_handle, win);
+}
+
+static void
 portal_test_win_class_init (PortalTestWinClass *class)
 {
-  gtk_widget_class_set_template_from_resource (GTK_WIDGET_CLASS (class),
+  GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (class);
+
+  widget_class->realize = test_win_realize;
+
+  gtk_widget_class_set_template_from_resource (widget_class,
                                                "/org/gtk/portal-test/portal-test-win.ui");
-  gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), save_dialog);
-  gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), open_local);
-  gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), take_screenshot);
-  gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), notify_me);
-  gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), print_cb);
-  gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), inhibit_changed);
-  gtk_widget_class_bind_template_callback (GTK_WIDGET_CLASS (class), play_clicked);
-  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, sandbox_status);
-  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, network_status);
-  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, monitor_name);
-  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, proxies);
-  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, resolver_name);
-  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, image);
-  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, encoding);
-  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, ack_image);
-  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, inhibit_idle);
-  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, inhibit_logout);
-  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, inhibit_suspend);
-  gtk_widget_class_bind_template_child (GTK_WIDGET_CLASS (class), PortalTestWin, inhibit_switch);
+
+  gtk_widget_class_bind_template_callback (widget_class, save_dialog);
+  gtk_widget_class_bind_template_callback (widget_class, open_local);
+  gtk_widget_class_bind_template_callback (widget_class, take_screenshot);
+  gtk_widget_class_bind_template_callback (widget_class, notify_me);
+  gtk_widget_class_bind_template_callback (widget_class, print_cb);
+  gtk_widget_class_bind_template_callback (widget_class, inhibit_changed);
+  gtk_widget_class_bind_template_callback (widget_class, play_clicked);
+  gtk_widget_class_bind_template_child (widget_class, PortalTestWin, sandbox_status);
+  gtk_widget_class_bind_template_child (widget_class, PortalTestWin, network_status);
+  gtk_widget_class_bind_template_child (widget_class, PortalTestWin, monitor_name);
+  gtk_widget_class_bind_template_child (widget_class, PortalTestWin, proxies);
+  gtk_widget_class_bind_template_child (widget_class, PortalTestWin, resolver_name);
+  gtk_widget_class_bind_template_child (widget_class, PortalTestWin, image);
+  gtk_widget_class_bind_template_child (widget_class, PortalTestWin, encoding);
+  gtk_widget_class_bind_template_child (widget_class, PortalTestWin, ack_image);
+  gtk_widget_class_bind_template_child (widget_class, PortalTestWin, inhibit_idle);
+  gtk_widget_class_bind_template_child (widget_class, PortalTestWin, inhibit_logout);
+  gtk_widget_class_bind_template_child (widget_class, PortalTestWin, inhibit_suspend);
+  gtk_widget_class_bind_template_child (widget_class, PortalTestWin, inhibit_switch);
 }
 
 GtkApplicationWindow *
