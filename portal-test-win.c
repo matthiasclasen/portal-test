@@ -12,10 +12,15 @@
 
 #include "portal-test-app.h"
 #include "portal-test-win.h"
-#include "xdg-desktop-portal-dbus.h"
+#include "screenshot-portal.h"
+#include "content-chooser-portal.h"
 
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
+#endif
+
+#ifdef GDK_WINDOWING_WAYLAND
+#include <gdk/gdkwayland.h>
 #endif
 
 struct _PortalTestWin
@@ -28,6 +33,8 @@ struct _PortalTestWin
   GtkWidget *proxies;
   GtkWidget *encoding;
   GtkWidget *ack_image;
+
+  char *window_handle;
 
   GNetworkMonitor *monitor;
   GProxyResolver *resolver;
@@ -268,21 +275,13 @@ take_screenshot (GtkWidget *button, PortalTestWin *win)
 {
   GVariantBuilder opt_builder;
   GVariant *options;
-  GdkWindow *parent_window;
-  g_autofree char *parent_window_str = NULL;
 
   g_variant_builder_init (&opt_builder, G_VARIANT_TYPE_VARDICT);
   g_variant_builder_add (&opt_builder, "{sv}", "modal", g_variant_new_boolean (TRUE));
   options = g_variant_builder_end (&opt_builder);
 
-  parent_window = gtk_widget_get_window (GTK_WIDGET (win));
-#ifdef GDK_WINDOWING_X11
-  if (GDK_IS_X11_WINDOW (parent_window))
-    parent_window_str = g_strdup_printf ("x11:%x", (guint32)gdk_x11_window_get_xid (parent_window));
-#endif
-
   xdp_screenshot_call_screenshot (win->screenshot,
-                                  parent_window_str ? parent_window_str : "",
+                                  win->window_handle ? win->window_handle : "",
                                   options,
                                   NULL,
                                   screenshot_called,
