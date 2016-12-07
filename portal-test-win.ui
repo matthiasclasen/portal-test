@@ -415,6 +415,62 @@
           </packing>
         </child>
 
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">1</property>
+            <property name="halign">end</property>
+            <property name="label">Account</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">12</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButton">
+            <property name="visible">1</property>
+            <property name="xalign">0</property>
+            <property name="label">Update</property>
+            <signal name="clicked" handler="get_user_information"/>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">12</property>
+          </packing>
+        </child>
+
+        <child>
+          <object class="GtkLabel" id="username">
+            <property name="visible">1</property>
+            <property name="xalign">0</property>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">13</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkImage" id="avatar">
+            <property name="visible">1</property>
+          </object>
+          <packing>
+            <property name="left-attach">2</property>
+            <property name="top-attach">12</property>
+            <property name="height">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel" id="realname">
+            <property name="visible">1</property>
+            <property name="xalign">0</property>
+            <property name="label"></property>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">14</property>
+          </packing>
+        </child>
+
       </object>
     </child>
   </template>

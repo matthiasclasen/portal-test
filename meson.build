@@ -15,10 +15,14 @@ resources = gnome.compile_resources('resources',
                                     'portal-test.gresource.xml',
                                     c_name: '_portal_test',
                                     source_dir: '.')
-dbus = gnome.gdbus_codegen('xdg-desktop-portal-dbus',
-                           'org.freedesktop.portal.Screenshot.xml',
-                           interface_prefix: 'org.freedesktop.portal.',
-                           namespace: 'Xdp')
+screenshot = gnome.gdbus_codegen('screenshot-portal',
+                            'org.freedesktop.portal.Screenshot.xml',
+                            interface_prefix: 'org.freedesktop.portal.',
+                            namespace: 'Xdp')
+account = gnome.gdbus_codegen('account-portal',
+                            'org.freedesktop.portal.Account.xml',
+                            interface_prefix: 'org.freedesktop.portal.',
+                            namespace: 'Xdp')
 
 src = ['main.c',
        'portal-test-app.h',
@@ -26,7 +30,8 @@ src = ['main.c',
        'portal-test-win.h',
        'portal-test-win.c',
        resources,
-       dbus]
+       screenshot,
+       account]
 
 executable('portal-test',
            src,

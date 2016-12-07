@@ -13,7 +13,7 @@
 #include "portal-test-app.h"
 #include "portal-test-win.h"
 #include "screenshot-portal.h"
-#include "content-chooser-portal.h"
+#include "account-portal.h"
 
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
@@ -50,6 +50,13 @@ struct _PortalTestWin
   GtkWidget *inhibit_switch;
   guint inhibit_cookie;
   GtkApplicationInhibitFlags inhibit_flags;
+
+  XdpAccount *account;
+  char *account_handle;
+  guint account_response_signal_id;
+  GtkWidget *username;
+  GtkWidget *realname;
+  GtkWidget *avatar;
 };
 
 struct _PortalTestWinClass
@@ -118,6 +125,11 @@ portal_test_win_init (PortalTestWin *win)
                                                            "org.freedesktop.portal.Desktop",
                                                            "/org/freedesktop/portal/desktop",
                                                            NULL, NULL);
+  win->account = xdp_account_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
+                                                     G_DBUS_PROXY_FLAGS_NONE,
+                                                     "org.freedesktop.portal.Desktop",
+                                                     "/org/freedesktop/portal/desktop",
+                                                     NULL, NULL);
 }
 
 static void
@@ -286,6 +298,92 @@ take_screenshot (GtkWidget *button, PortalTestWin *win)
                                   NULL,
                                   screenshot_called,
                                   win);
+}
+
+static void
+account_response (GDBusConnection *connection,
+                  const char *sender_name,
+                  const char *object_path,
+                  const char *interface_name,
+                  const char *signal_name,
+                  GVariant *parameters,
+                  gpointer user_data)
+{
+  PortalTestWin *win = user_data;
+  guint32 response;
+  GVariant *options;
+
+  g_variant_get (parameters, "(u@a{sv})", &response, &options);
+
+  if (response == 0)
+    {
+      g_autoptr(GdkPixbuf) pixbuf = NULL;
+      g_autoptr(GError) error = NULL;
+      const char *id;
+      const char *name;
+      const char *uri;
+      g_autofree char *path = NULL;
+
+      g_variant_lookup (options, "id", "&s", &id);
+      g_variant_lookup (options, "name", "&s", &name);
+      g_variant_lookup (options, "image", "&s", &uri);
+
+      gtk_label_set_label (GTK_LABEL (win->username), id);
+      gtk_label_set_label (GTK_LABEL (win->realname), name);
+
+      if (uri && uri[0])
+        {
+          path = g_filename_from_uri (uri, NULL, NULL);
+          pixbuf = gdk_pixbuf_new_from_file_at_scale (path, 60, 40, TRUE, &error);
+          if (error)
+            g_warning ("Failed to load photo %s: %s", path, error->message);
+          else
+            gtk_image_set_from_pixbuf (GTK_IMAGE (win->avatar), pixbuf);
+       }
+    }
+  else
+    g_message ("Account canceled");
+
+  if (win->account_response_signal_id != 0)
+    g_dbus_connection_signal_unsubscribe (connection,
+                                          win->account_response_signal_id);
+}
+
+static void
+get_user_information_called (GObject *source,
+                             GAsyncResult *result,
+                             gpointer data)
+{
+  PortalTestWin *win = data;
+  g_autoptr(GError) error = NULL;
+  g_autofree char *handle = NULL;
+
+  if (!xdp_account_call_get_user_information_finish (win->account, &handle, result, &error))
+    {
+      g_warning ("Account error: %s", error->message);
+      return;
+    }
+
+  win->account_response_signal_id =
+    g_dbus_connection_signal_subscribe (g_dbus_proxy_get_connection (G_DBUS_PROXY (win->account)),
+                                        "org.freedesktop.portal.Desktop",
+                                        "org.freedesktop.portal.Request",
+                                        "Response",
+                                        handle,
+                                        NULL,
+                                        G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE,
+                                        account_response,
+                                        win, NULL);
+}
+
+static void
+get_user_information (GtkWidget *button, PortalTestWin *win)
+{
+  xdp_account_call_get_user_information (win->account,
+                                         win->window_handle ? win->window_handle : "",
+                                         NULL,
+                                         get_user_information_called,
+                                         win);
 }
 
 static void
@@ -656,6 +754,7 @@ portal_test_win_class_init (PortalTestWinClass *class)
   gtk_widget_class_bind_template_callback (widget_class, print_cb);
   gtk_widget_class_bind_template_callback (widget_class, inhibit_changed);
   gtk_widget_class_bind_template_callback (widget_class, play_clicked);
+  gtk_widget_class_bind_template_callback (widget_class, get_user_information);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, sandbox_status);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, network_status);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, monitor_name);
@@ -668,6 +767,9 @@ portal_test_win_class_init (PortalTestWinClass *class)
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, inhibit_logout);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, inhibit_suspend);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, inhibit_switch);
+  gtk_widget_class_bind_template_child (widget_class, PortalTestWin, username);
+  gtk_widget_class_bind_template_child (widget_class, PortalTestWin, realname);
+  gtk_widget_class_bind_template_child (widget_class, PortalTestWin, avatar);
 }
 
 GtkApplicationWindow *
