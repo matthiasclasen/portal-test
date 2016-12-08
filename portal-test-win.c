@@ -190,7 +190,7 @@ save_dialog (GtkWidget *button, PortalTestWin *win)
 
   res = gtk_native_dialog_run (GTK_NATIVE_DIALOG (dialog));
   g_message ("Saving file / Response: %d", res);
-  if (res == GTK_RESPONSE_OK)
+  if (res == GTK_RESPONSE_ACCEPT)
     {
       char *filename;
       filename = gtk_file_chooser_get_filename (chooser);
