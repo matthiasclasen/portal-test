@@ -21,29 +21,42 @@ resources.c: portal-test.gresource.xml $(resource_files)
 
 BUILT_SOURCES += $(resource_files)
 
-dbus_built_sources = xdg-desktop-portal-dbus.c xdg-desktop-portal-dbus.h
-BUILT_SOURCES += $(dbus_built_sources)
+screenshot_sources = screenshot-portal.c screenshot-portal.h
+BUILT_SOURCES += $(screenshot_sources)
 
-$(dbus_built_sources): Makefile.am
+$(screenshot_sources): Makefile.am
 	$(AM_V_GEN) $(GDBUS_CODEGEN)                    			\
 		--interface-prefix org.freedesktop.portal. 			\
 		--c-namespace Xdp                       			\
-		--generate-c-code xdg-desktop-portal-dbus               	\
+		--generate-c-code screenshot-portal 	   	           	\
 		$(srcdir)/org.freedesktop.portal.Screenshot.xml 		\
+		$(NULL)
+
+account_sources = account-portal.c account-portal.h
+BUILT_SOURCES += $(account_sources)
+
+$(account_sources): Makefile.am
+	$(AM_V_GEN) $(GDBUS_CODEGEN)                    			\
+		--interface-prefix org.freedesktop.portal. 			\
+		--c-namespace Xdp                       			\
+		--generate-c-code account-portal 	   	           	\
+		$(srcdir)/org.freedesktop.portal.Account.xml	 		\
 		$(NULL)
 
 bin_PROGRAMS = portal-test
 portal_test_CFLAGS = $(PORTAL_TEST_CFLAGS)
 portal_test_LDADD = $(PORTAL_TEST_LIBS)
-portal_test_SOURCES = 					\
-	main.c						\
-	portal-test-app.h				\
-	portal-test-app.c				\
-	portal-test-win.h				\
-	portal-test-win.c				\
-	xdg-desktop-portal-dbus.h			\
-	xdg-desktop-portal-dbus.c			\
-	resources.h					\
+portal_test_SOURCES = 				\
+	main.c					\
+	portal-test-app.h			\
+	portal-test-app.c			\
+	portal-test-win.h			\
+	portal-test-win.c			\
+	screenshot-portal.h			\
+	screenshot-portal.c			\
+	account-portal.h			\
+	account-portal.c			\
+	resources.h				\
 	resources.c
 
 pkgdata_DATA = test.txt
