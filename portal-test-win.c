@@ -251,8 +251,11 @@ screenshot_response (GDBusConnection *connection,
     g_message ("Screenshot canceled");
 
   if (win->screenshot_response_signal_id != 0)
-    g_dbus_connection_signal_unsubscribe (connection,
-                                          win->screenshot_response_signal_id);
+    {
+      g_dbus_connection_signal_unsubscribe (connection,
+                                            win->screenshot_response_signal_id);
+      win->screenshot_response_signal_id = 0;
+    }
 }
 
 static void
@@ -345,8 +348,11 @@ account_response (GDBusConnection *connection,
     g_message ("Account canceled");
 
   if (win->account_response_signal_id != 0)
-    g_dbus_connection_signal_unsubscribe (connection,
-                                          win->account_response_signal_id);
+    {
+      g_dbus_connection_signal_unsubscribe (connection,
+                                            win->account_response_signal_id);
+      win->account_response_signal_id = 0;
+    }
 }
 
 static void
