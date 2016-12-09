@@ -34,6 +34,19 @@
 
         Gets information about the user.
 
+        Supported keys in the @options vardict include:
+        <variablelist>
+          <varlistentry>
+            <term>reason s</term>
+            <listitem><para>
+              A string that can be shown in the dialog to expain why the information is needed.
+              This should be a complete sentence that explains what the application will do with
+              the returned information, for example: Allows your personal information to be included
+              with recipes you share with your friends.
+            </para></listitem>•
+          </varlistentry>
+        </variablelist>
+
         The following results get returned via the #org.freedesktop.portal.Request::Response signal:
         <variablelist>
           <varlistentry>
@@ -62,6 +75,7 @@
     -->
     <method name="GetUserInformation">
       <arg type="s" name="window" direction="in"/>
+      <arg type="a{sv}" name="options" direction="in"/>
       <arg type="o" name="handle" direction="out"/>
     </method>
   </interface>

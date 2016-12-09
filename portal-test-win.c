@@ -385,8 +385,13 @@ get_user_information_called (GObject *source,
 static void
 get_user_information (GtkWidget *button, PortalTestWin *win)
 {
+  GVariantBuilder options;
+
+  g_variant_builder_init (&options, G_VARIANT_TYPE_VARDICT);
+  g_variant_builder_add (&options, "{sv}", "reason", g_variant_new_string ("Allows portal-test to test the Account portal."));
   xdp_account_call_get_user_information (win->account,
                                          win->window_handle ? win->window_handle : "",
+                                         g_variant_builder_end (&options),
                                          NULL,
                                          get_user_information_called,
                                          win);
