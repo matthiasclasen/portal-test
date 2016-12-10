@@ -1,9 +1,9 @@
-project('test app','c', version: '1')
+project('test app','c', version: '1', meson_version: '>= 0.36.0')
 
 conf_data = configuration_data()
-conf_data.set('G_LOG_DOMAIN', '"PortalTest"')
-conf_data.set('PACKAGE_NAME', '"portal-test"')
-conf_data.set('PKGDATADIR', '"' + get_option('prefix') + '/' + get_option('datadir') + '/portal-test"')
+conf_data.set_quoted('G_LOG_DOMAIN', 'PortalTest')
+conf_data.set_quoted('PACKAGE_NAME', 'portal-test')
+conf_data.set_quoted('PKGDATADIR', join_paths(get_option('prefix'), get_option('datadir'), 'portal-test'))
 configure_file(output : 'config.h', configuration : conf_data)
 
 gnome = import('gnome')
@@ -13,8 +13,7 @@ gst_dep = dependency('gstreamer-audio-1.0')
 
 resources = gnome.compile_resources('resources',
                                     'portal-test.gresource.xml',
-                                    c_name: '_portal_test',
-                                    source_dir: '.')
+                                    c_name: '_portal_test')
 screenshot = gnome.gdbus_codegen('screenshot-portal',
                             'org.freedesktop.portal.Screenshot.xml',
                             interface_prefix: 'org.freedesktop.portal.',
