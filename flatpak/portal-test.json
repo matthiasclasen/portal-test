@@ -18,6 +18,7 @@
     "modules": [
         {
             "name": "portal-test",
+            "buildsystem": "meson",
             "sources": [
                 {
                     "type": "git",
