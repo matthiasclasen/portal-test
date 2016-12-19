@@ -34,4 +34,5 @@ src = ['main.c',
 
 executable('portal-test',
            src,
-           dependencies: [gtk_dep, gst_dep])
+           dependencies: [gtk_dep, gst_dep],
+           install : true)
