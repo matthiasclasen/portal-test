@@ -16,3 +16,4 @@ and run it with
     flatpak run org.gnome.PortalTest
 
 The test expects the xdg-desktop-portal service (and a backend, such as xdg-desktop-portal-gtk) to be available on the session bus.
+
