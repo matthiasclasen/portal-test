@@ -65,6 +65,22 @@
         </child>
 
         <child>
+          <object class="GtkComboBoxText" id="save_how">
+            <property name="visible">1</property>
+            <items>
+              <item id="atomically">Atomic</item>
+              <item id="posix">POSIX</item>
+              <item id="gio">GIO</item>
+            </items>
+            <property name="active-id">atomically</property>
+          </object>
+          <packing>
+            <property name="left-attach">2</property>
+            <property name="top-attach">0</property>
+          </packing>
+        </child>
+
+        <child>
           <object class="GtkLabel">
             <property name="visible">1</property>
             <property name="halign">end</property>

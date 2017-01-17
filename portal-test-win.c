@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <string.h>
 
 #include "portal-test-app.h"
 #include "portal-test-win.h"
@@ -57,6 +58,7 @@ struct _PortalTestWin
   GtkWidget *username;
   GtkWidget *realname;
   GtkWidget *avatar;
+  GtkWidget *save_how;
 };
 
 struct _PortalTestWinClass
@@ -146,6 +148,59 @@ open_local (GtkWidget *button, PortalTestWin *win)
   g_app_info_launch_default_for_uri (uri, NULL, NULL);
 }
 
+static gboolean
+write_file_atomically (const char *path, GError **error)
+{
+  return g_file_set_contents (path, "test", -1, error);
+}
+
+static gboolean
+write_file_gio (const char *path, GError **error)
+{
+  g_autoptr(GFile) file = NULL;
+  g_autoptr(GOutputStream) stream = NULL;
+
+  file = g_file_new_for_path (path);
+  stream = G_OUTPUT_STREAM (g_file_create (file, 0, NULL, error));
+  if (stream == NULL)
+    return FALSE;
+
+  if (g_output_stream_write (stream, "test", strlen ("test"), NULL, error) < 0)
+    return FALSE;
+
+  if (!g_output_stream_close (stream, NULL, error))
+    return FALSE;
+
+  return TRUE;
+}
+
+static gboolean
+write_file_posix (const char *path, GError **error)
+{
+  int fd;
+
+  fd = creat (path, 0600);
+  if (fd < 0)
+    {
+      g_set_error_literal (error, G_IO_ERROR, g_io_error_from_errno (errno), "creat failed");
+      return FALSE;
+    }
+
+  if (write (fd, "test", strlen ("test")) < 0)
+    {
+      g_set_error (error, G_IO_ERROR, g_io_error_from_errno (errno), "write failed");
+      return FALSE;
+    }
+
+  if (close (fd) < 0)
+    {
+      g_set_error (error, G_IO_ERROR, g_io_error_from_errno (errno), "close failed");
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 static void
 save_dialog (GtkWidget *button, PortalTestWin *win)
 {
@@ -192,9 +247,27 @@ save_dialog (GtkWidget *button, PortalTestWin *win)
   g_message ("Saving file / Response: %d", res);
   if (res == GTK_RESPONSE_ACCEPT)
     {
+      const char *method;
       char *filename;
+      gboolean res;
+      g_autoptr(GError) error = NULL;
+
+      method = gtk_combo_box_get_active_id (GTK_COMBO_BOX (win->save_how));
+
       filename = gtk_file_chooser_get_filename (chooser);
       g_message ("Saving file: '%s'", filename);
+
+      if (strcmp (method, "atomically") == 0)
+        res = write_file_atomically (filename, &error);
+      else if (strcmp (method, "posix") == 0)
+        res = write_file_posix (filename, &error);
+      else if (strcmp (method, "gio") == 0)
+        res = write_file_gio (filename, &error);
+      else
+        g_message ("Not writing");
+
+      if (!res)
+        g_message ("Failed: %s", error->message);
       g_free (filename);
     }
 
@@ -780,6 +853,7 @@ portal_test_win_class_init (PortalTestWinClass *class)
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, username);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, realname);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, avatar);
+  gtk_widget_class_bind_template_child (widget_class, PortalTestWin, save_how);
 }
 
 GtkApplicationWindow *
