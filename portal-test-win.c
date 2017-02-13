@@ -15,6 +15,7 @@
 #include "portal-test-win.h"
 #include "screenshot-portal.h"
 #include "account-portal.h"
+#include "email-portal.h"
 
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
@@ -59,6 +60,9 @@ struct _PortalTestWin
   GtkWidget *realname;
   GtkWidget *avatar;
   GtkWidget *save_how;
+
+  XdpEmail *email;
+  guint email_response_signal_id;
 };
 
 struct _PortalTestWinClass
@@ -132,6 +136,11 @@ portal_test_win_init (PortalTestWin *win)
                                                      "org.freedesktop.portal.Desktop",
                                                      "/org/freedesktop/portal/desktop",
                                                      NULL, NULL);
+  win->email = xdp_email_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
+                                                 G_DBUS_PROXY_FLAGS_NONE,
+                                                 "org.freedesktop.portal.Desktop",
+                                                 "/org/freedesktop/portal/desktop",
+                                                 NULL, NULL);
 }
 
 static void
@@ -468,6 +477,83 @@ get_user_information (GtkWidget *button, PortalTestWin *win)
                                          NULL,
                                          get_user_information_called,
                                          win);
+}
+
+static void
+email_response (GDBusConnection *connection,
+                const char *sender_name,
+                const char *object_path,
+                const char *interface_name,
+                const char *signal_name,
+                GVariant *parameters,
+                gpointer user_data)
+{
+  PortalTestWin *win = user_data;
+  guint32 response;
+  GVariant *options;
+
+  g_variant_get (parameters, "(u@a{sv})", &response, &options);
+
+  if (response == 0)
+    g_message ("Email success");
+  else
+    g_message ("Email canceled");
+
+  if (win->email_response_signal_id != 0)
+    {
+      g_dbus_connection_signal_unsubscribe (connection,
+                                            win->email_response_signal_id);
+      win->email_response_signal_id = 0;
+    }
+}
+
+static void
+send_email_called (GObject *source,
+                   GAsyncResult *result,
+                   gpointer data)
+{
+  PortalTestWin *win = data;
+  g_autoptr(GError) error = NULL;
+  g_autofree char *handle = NULL;
+
+  if (!xdp_email_call_send_email_finish (win->email, &handle, result, &error))
+    {
+      g_warning ("Email error: %s", error->message);
+      return;
+    }
+
+  win->email_response_signal_id =
+    g_dbus_connection_signal_subscribe (g_dbus_proxy_get_connection (G_DBUS_PROXY (win->email)),
+                                        "org.freedesktop.portal.Desktop",
+                                        "org.freedesktop.portal.Request",
+                                        "Response",
+                                        handle,
+                                        NULL,
+                                        G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE,
+                                        email_response,
+                                        win, NULL);
+}
+
+static void
+send_email (GtkWidget *button, PortalTestWin *win)
+{
+  GVariantBuilder options;
+  const char *strv[2];
+
+  strv[0] = PKGDATADIR "/test.txt";
+  strv[1] = NULL;
+
+  g_variant_builder_init (&options, G_VARIANT_TYPE_VARDICT);
+  g_variant_builder_add (&options, "{sv}", "address", g_variant_new_string ("recipes-list@gnome.org"));
+  g_variant_builder_add (&options, "{sv}", "subject", g_variant_new_string ("Test subject"));
+  g_variant_builder_add (&options, "{sv}", "body", g_variant_new_string ("Test body"));
+  g_variant_builder_add (&options, "{sv}", "attachments", g_variant_new_strv (strv, -1));
+  xdp_email_call_send_email (win->email,
+                             win->window_handle ? win->window_handle : "",
+                             g_variant_builder_end (&options),
+                             NULL,
+                             send_email_called,
+                             win);
 }
 
 static void
@@ -838,6 +924,7 @@ portal_test_win_class_init (PortalTestWinClass *class)
   gtk_widget_class_bind_template_callback (widget_class, inhibit_changed);
   gtk_widget_class_bind_template_callback (widget_class, play_clicked);
   gtk_widget_class_bind_template_callback (widget_class, get_user_information);
+  gtk_widget_class_bind_template_callback (widget_class, send_email);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, sandbox_status);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, network_status);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, monitor_name);
