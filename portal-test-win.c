@@ -844,11 +844,61 @@ pipeline_stop (GstElement *pipeline)
 
   return FALSE;
 }
+
+static gboolean
+watch_func (GstBus     *bus,
+            GstMessage *message,
+            gpointer    data)
+{
+  GstElement *pipeline = data;
+
+  g_print ("message %d\n", GST_MESSAGE_TYPE (message));
+
+  if (GST_MESSAGE_TYPE (message) == GST_MESSAGE_ERROR)
+    {
+      g_autoptr(GError) err = NULL;
+
+      gst_message_parse_error (message, &err, NULL);
+      g_print ("ERROR: %s\n", err->message);
+
+      gst_element_set_state (pipeline, GST_STATE_NULL);
+      g_object_unref (pipeline);
+      g_object_unref (bus);
+
+      return FALSE;
+    }
+  else if (GST_MESSAGE_TYPE (message) == GST_MESSAGE_STATE_CHANGED)
+    {
+      GstStateChangeReturn change;
+      GstState state;
+      GstState pending;
+
+      change = gst_element_get_state (pipeline, &state, &pending, GST_MSECOND);
+      if (change == GST_STATE_CHANGE_SUCCESS)
+        g_print ("Pipeline state now %d\n", state);
+      else if (change == GST_STATE_CHANGE_ASYNC)
+        g_print ("Pipeline state now %d, pending %d\n", state, pending);
+      else
+        g_print ("Pipeline state change failed, now %d\n", state);
+
+      if (state == GST_STATE_PLAYING)
+        {
+          g_timeout_add (500, (GSourceFunc) pipeline_stop, pipeline);
+          g_object_unref (bus);
+
+          return FALSE;
+        }
+    }
+
+  return TRUE;
+}
+
 static void
 play_sound (gdouble frequency)
 {
   GstElement *source, *sink;
   GstElement *pipeline;
+  GstBus *bus;
 
   pipeline = gst_pipeline_new ("note");
   source = gst_element_factory_make ("audiotestsrc", "source");
@@ -859,9 +909,11 @@ play_sound (gdouble frequency)
   gst_bin_add_many (GST_BIN (pipeline), source, sink, NULL);
   gst_element_link (source, sink);
 
-  gst_element_set_state (pipeline, GST_STATE_PLAYING);
+  bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
+  gst_bus_add_watch (bus, watch_func, pipeline);
 
-  g_timeout_add (500, (GSourceFunc) pipeline_stop, pipeline);
+  g_print ("Set pipeline state to playing\n");
+  gst_element_set_state (pipeline, GST_STATE_PLAYING);
 }
 
 static void
