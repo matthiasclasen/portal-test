@@ -41,3 +41,6 @@ executable('portal-test',
            src,
            dependencies: [gtk_dep, gst_dep],
            install : true)
+
+install_data('org.gnome.PortalTest.desktop', install_dir: 'share/applications')
+install_data('org.gnome.PortalTest.service', install_dir: 'share/dbus-1/services')
