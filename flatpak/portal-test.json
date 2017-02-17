@@ -6,7 +6,8 @@
     "command": "portal-test",
     "finish-args": [
         "--socket=wayland",
-        "--socket=x11"
+        "--socket=x11",
+        "--socket=pulseaudio"
     ],
     "modules": [
         {
@@ -33,7 +34,8 @@
             "sources": [
                 {
                     "type": "git",
-                    "url": "https://github.com/matthiasclasen/portal-test.git"
+                    "branch": "email",
+                    "url": "file:///home/mclasen/Sources/portal-test"
                 }
             ]
         }
