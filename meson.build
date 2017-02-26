@@ -1,4 +1,4 @@
-project('test app','c', version: '1', meson_version: '>= 0.36.0')
+project('portal-test','c', version: '1', meson_version: '>= 0.36.0')
 
 conf_data = configuration_data()
 conf_data.set_quoted('G_LOG_DOMAIN', 'PortalTest')
