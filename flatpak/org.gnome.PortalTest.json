@@ -34,8 +34,7 @@
             "sources": [
                 {
                     "type": "git",
-                    "branch": "email",
-                    "url": "file:///home/mclasen/Sources/portal-test"
+                    "url": "https://github.com/matthiasclasen/permission-viewer.git"
                 }
             ]
         }
