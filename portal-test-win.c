@@ -104,6 +104,7 @@ portal_test_win_init (PortalTestWin *win)
   g_auto(GStrv) proxies = NULL;
   g_autofree char *proxy = NULL;
   g_autofree char *path = NULL;
+  g_autoptr(GError) error = NULL;
 
   gtk_widget_init_template (GTK_WIDGET (win));
 
@@ -122,8 +123,14 @@ portal_test_win_init (PortalTestWin *win)
   win->resolver = g_proxy_resolver_get_default ();
   gtk_label_set_label (GTK_LABEL (win->resolver_name), G_OBJECT_TYPE_NAME (win->resolver));
 
-  proxies = g_proxy_resolver_lookup (win->resolver, "http://www.flatpak.org", NULL, NULL);
-  proxy = g_strjoinv (", ", proxies);
+  proxies = g_proxy_resolver_lookup (win->resolver, "http://www.flatpak.org", NULL, &error);
+  if (proxies == NULL)
+    {
+      g_print ("Failed to lookup proxies: %s\n", error->message);
+      proxy = g_strdup ("");
+    }
+  else
+    proxy = g_strjoinv (", ", proxies);
   gtk_label_set_label (GTK_LABEL (win->proxies), proxy);
 
   win->screenshot = xdp_screenshot_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
