@@ -23,16 +23,17 @@
       org.freedesktop.portal.Email:
       @short_description: Portal for sending email
 
-      This simple portal lets sandboxed applications request to send an email.
+      This simple portal lets sandboxed applications request to send an email,
+      optionally providing an address, subject, body and attachments.
   -->
   <interface name="org.freedesktop.portal.Email">
     <!--
-        SendEmail:
+        ComposeEmail:
         @parent_window: Identifier for the application window
         @options: Vardict with optional further information
         @handle: Object path for the #org.freedesktop.portal.Request object representing this call
 
-        Sends an email.
+        Presents a window that lets the user compose an email.
 
         The @parent_window identifier must be of the form "x11:$XID" for an X11
         window. Support for other window systems may be added in the future.
@@ -64,8 +65,10 @@
             </para></listitem>
           </varlistentry>
         </variablelist>
+
+        All the keys in the options are are optional.
     -->
-    <method name="SendEmail">
+    <method name="ComposeEmail">
       <arg type="s" name="parent_window" direction="in"/>
       <arg type="a{sv}" name="options" direction="in"/>
       <arg type="o" name="handle" direction="out"/>

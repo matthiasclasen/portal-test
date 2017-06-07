@@ -501,8 +501,8 @@
           <object class="GtkButton">
             <property name="visible">1</property>
             <property name="xalign">0</property>
-            <property name="label">Send</property>
-            <signal name="clicked" handler="send_email"/>
+            <property name="label">Compose</property>
+            <signal name="clicked" handler="compose_email"/>
           </object>
           <packing>
             <property name="left-attach">1</property>

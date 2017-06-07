@@ -515,15 +515,15 @@ email_response (GDBusConnection *connection,
 }
 
 static void
-send_email_called (GObject *source,
-                   GAsyncResult *result,
-                   gpointer data)
+compose_email_called (GObject *source,
+                      GAsyncResult *result,
+                      gpointer data)
 {
   PortalTestWin *win = data;
   g_autoptr(GError) error = NULL;
   g_autofree char *handle = NULL;
 
-  if (!xdp_email_call_send_email_finish (win->email, &handle, result, &error))
+  if (!xdp_email_call_compose_email_finish (win->email, &handle, result, &error))
     {
       g_warning ("Email error: %s", error->message);
       return;
@@ -542,7 +542,7 @@ send_email_called (GObject *source,
 }
 
 static void
-send_email (GtkWidget *button, PortalTestWin *win)
+compose_email (GtkWidget *button, PortalTestWin *win)
 {
   GVariantBuilder options;
   const char *strv[2];
@@ -555,12 +555,12 @@ send_email (GtkWidget *button, PortalTestWin *win)
   g_variant_builder_add (&options, "{sv}", "subject", g_variant_new_string ("Test subject"));
   g_variant_builder_add (&options, "{sv}", "body", g_variant_new_string ("Test body"));
   g_variant_builder_add (&options, "{sv}", "attachments", g_variant_new_strv (strv, -1));
-  xdp_email_call_send_email (win->email,
-                             win->window_handle ? win->window_handle : "",
-                             g_variant_builder_end (&options),
-                             NULL,
-                             send_email_called,
-                             win);
+  xdp_email_call_compose_email (win->email,
+                                win->window_handle ? win->window_handle : "",
+                                g_variant_builder_end (&options),
+                                NULL,
+                                compose_email_called,
+                                win);
 }
 
 static void
@@ -983,7 +983,7 @@ portal_test_win_class_init (PortalTestWinClass *class)
   gtk_widget_class_bind_template_callback (widget_class, inhibit_changed);
   gtk_widget_class_bind_template_callback (widget_class, play_clicked);
   gtk_widget_class_bind_template_callback (widget_class, get_user_information);
-  gtk_widget_class_bind_template_callback (widget_class, send_email);
+  gtk_widget_class_bind_template_callback (widget_class, compose_email);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, sandbox_status);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, network_status);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, monitor_name);
