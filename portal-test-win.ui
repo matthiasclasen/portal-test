@@ -509,6 +509,41 @@
             <property name="top-attach">15</property>
           </packing>
         </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">1</property>
+            <property name="valign">center</property>
+            <property name="halign">end</property>
+            <property name="label">Online Accounts</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">16</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButton">
+            <property name="visible">1</property>
+            <property name="valign">center</property>
+            <property name="xalign">0</property>
+            <property name="label">Get Accounts</property>
+            <signal name="clicked" handler="get_accounts"/>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">16</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel" id="online_accounts_label">
+            <property name="visible">1</property>
+            <property name="halign">start</property>
+          </object>
+          <packing>
+            <property name="left-attach">2</property>
+            <property name="top-attach">16</property>
+          </packing>
+        </child>
 
       </object>
     </child>

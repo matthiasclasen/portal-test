@@ -1,0 +1,173 @@
+<?xml version="1.0"?>
+<!--
+ Copyright (C) 2017 Red Hat, Inc.
+
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public
+ License as published by the Free Software Foundation; either
+ version 2 of the License, or (at your option) any later version.
+
+ This library is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Lesser General Public License for more details.
+
+ You should have received a copy of the GNU Lesser General Public
+ License along with this library. If not, see <http://www.gnu.org/licenses/>.
+
+ Author: Matthias Clasen <mclasen@redhat.com>
+-->
+
+<node name="/" xmlns:doc="http://www.freedesktop.org/dbus/1.0/doc.dtd">
+  <!--
+      org.freedesktop.portal.GnonmeAccounts:
+      @short_description: Portal for obtaining information about online accounts
+
+      This interface lets sandboxed applications request access to
+      GNOME online accounts of the user.
+  -->
+  <interface name="org.freedesktop.portal.GnomeAccounts">
+    <!--
+        GetAccounts:
+        @window: Identifier for the window
+        @options: Options
+        @handle: Object path for the #org.freedesktop.portal.Request object representing this call
+
+        Gets information about the users online accounts. The returned list of accounts
+        can be filtered by providing providers and interfaces that the application is
+        interested in. The list will also be filtered by what accounts the application
+        is allowed to use.
+
+        Supported keys in the @options vardict include:
+        <variablelist>
+          <varlistentry>
+            <term>providers as</term>
+            <listitem><para>
+              An array of provider types that the application is interested in.
+            </para></listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>interfaces as</term>
+            <listitem><para>
+              An array of interfaces that need to be enabled for the application to
+              make use of the account.
+            </para></listitem>
+          </varlistentry>
+        </variablelist>
+        </variablelist>
+
+        The following results get returned via the #org.freedesktop.portal.Request::Response signal:
+        <variablelist>
+          <varlistentry>
+            <term>accounts a(ssssbbay)</term>
+            <listitem><para>
+              An array of accounts. Each acount is represented as a tuple which contains:
+              the provider type, the provider name (for display), the account id, the user identity
+              for this account (for display), whether the account needs attention, whether the
+              account is disabled and a serialized icon.
+            </para></listitem>
+          </varlistentry>
+        </variablelist>
+    -->
+
+    <method name="GetAccounts">
+      <arg type="s" name="window" direction="in"/>
+      <arg type="a{sv}" name="options" direction="in"/>
+      <arg type="o" name="handle" direction="out"/>
+    </method>
+
+    <!--
+        AddAccount:
+        @window: Identifier for the window
+        @provider: the provider type to add an account for
+        @interfaces: the interfaces that are needed for the application
+        @options: Options
+        @handle: Object path for the #org.freedesktop.portal.Request object representing this call
+
+        Requests that the user add an account for a provider.
+
+        Supported keys in the @options vardict include:
+        <variablelist>
+          <varlistentry>
+            <term>interfaces as</term>
+            <listitem><para>
+              An array of interfaces that need to be enabled for the application to
+              make use of the account.
+            </para></listitem>
+          </varlistentry>
+        </variablelist>
+        </variablelist>
+
+        The following results get returned via the #org.freedesktop.portal.Request::Response signal:
+        <variablelist>
+          <varlistentry>
+            <term>account ssssbbay</term>
+            <listitem><para>
+              Information about the added account: the provider type, the provider name (for display),
+              the account id, the user identity for this account (for display), whether the account
+              needs attention, whether the account is disabled, a serialized icon.
+            </para></listitem>
+          </varlistentry>
+        </variablelist>
+    -->
+    <method name="AddAccount">
+      <arg type="s" name="window" direction="in"/>
+      <arg type="s" name="provider" direction="in"/>
+      <arg type="a{sv}" name="options" direction="in"/>
+      <arg type="o" name="handle" direction="out"/>
+    </method>
+
+    <!--
+        EnsureCredentials:
+        @window: Identifier for the window
+        @provider: the provider type to add an account for
+        @interfaces: the interfaces that are needed for the application
+        @options: Options
+        @handle: Object path for the #org.freedesktop.portal.Request object representing this call
+
+        Asks the user to provide credentials for an account. Applications need to
+        call this method to obtain the access token and client ID needed in order
+        to use the services of an account.
+
+        The following results get returned via the #org.freedesktop.portal.Request::Response signal:
+        <variablelist>
+          <varlistentry>
+            <term>access_token s</term>
+            <listitem><para>
+              An access token that can be used t o access services for the account.
+            </para></listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>expires_in i</term>
+            <listitem><para>
+              The time (in seconds) until the credentials expire.
+            </para></listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>client_id s</term>
+            <listitem><para>
+              The OAuth2 client ID.
+            </para></listitem>
+          </varlistentry>
+        </variablelist>
+    -->
+    <method name="EnsureCredentials">
+      <arg type="s" name="window" direction="in"/>
+      <arg type="s" name="account_id" direction="in"/>
+      <arg type="a{sv}" name="options" direction="in"/>
+      <arg type="o" name="handle" direction="out"/>
+    </method>
+
+    <!--
+        AccountsChanged:
+
+        Emitted when Accounts are added or removed, or change.
+
+        Applications should refresh their accounts by calling
+        GetAccounts() in response to this signal.
+    -->
+    <signal name="AccountsChanged"/>
+
+    <property name="version" type="u" access="read"/>
+  </interface>
+</node>

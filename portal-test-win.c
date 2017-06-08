@@ -16,6 +16,7 @@
 #include "screenshot-portal.h"
 #include "account-portal.h"
 #include "email-portal.h"
+#include "gnome-accounts-portal.h"
 
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
@@ -24,6 +25,9 @@
 #ifdef GDK_WINDOWING_WAYLAND
 #include <gdk/gdkwayland.h>
 #endif
+
+#define DESKTOP_PORTAL_BUS_NAME     "org.freedesktop.portal.Desktop"
+#define DESKTOP_PORTAL_OBJECT_PATH  "/org/freedesktop/portal/desktop"
 
 struct _PortalTestWin
 {
@@ -63,6 +67,10 @@ struct _PortalTestWin
 
   XdpEmail *email;
   guint email_response_signal_id;
+
+  XdpGnomeAccounts *gnome_accounts;
+  guint get_accounts_response_signal_id;
+  GtkWidget *online_accounts_label;
 };
 
 struct _PortalTestWinClass
@@ -95,6 +103,13 @@ update_network_status (PortalTestWin *win)
   g_type_class_unref (class);
 
   gtk_label_set_label (GTK_LABEL (win->network_status), s->str);
+}
+
+static void
+accounts_changed (GObject *obj,
+                  PortalTestWin *win)
+{
+  g_print ("Accounts changed\n");
 }
 
 static void
@@ -135,19 +150,26 @@ portal_test_win_init (PortalTestWin *win)
 
   win->screenshot = xdp_screenshot_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
                                                            G_DBUS_PROXY_FLAGS_NONE,
-                                                           "org.freedesktop.portal.Desktop",
-                                                           "/org/freedesktop/portal/desktop",
+                                                           DESKTOP_PORTAL_BUS_NAME,
+                                                           DESKTOP_PORTAL_OBJECT_PATH,
                                                            NULL, NULL);
   win->account = xdp_account_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
                                                      G_DBUS_PROXY_FLAGS_NONE,
-                                                     "org.freedesktop.portal.Desktop",
-                                                     "/org/freedesktop/portal/desktop",
+                                                     DESKTOP_PORTAL_BUS_NAME,
+                                                     DESKTOP_PORTAL_OBJECT_PATH,
                                                      NULL, NULL);
   win->email = xdp_email_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
                                                  G_DBUS_PROXY_FLAGS_NONE,
-                                                 "org.freedesktop.portal.Desktop",
-                                                 "/org/freedesktop/portal/desktop",
+                                                 DESKTOP_PORTAL_BUS_NAME,
+                                                 DESKTOP_PORTAL_OBJECT_PATH,
                                                  NULL, NULL);
+  win->gnome_accounts = xdp_gnome_accounts_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
+                                                                   G_DBUS_PROXY_FLAGS_NONE,
+                                                                   DESKTOP_PORTAL_BUS_NAME,
+                                                                   DESKTOP_PORTAL_OBJECT_PATH,
+                                                                   NULL, NULL);
+  g_signal_connect (win->gnome_accounts, "accounts-changed",
+                    G_CALLBACK (accounts_changed), win);
 }
 
 static void
@@ -307,7 +329,7 @@ save_dialog (GtkWidget *button, PortalTestWin *win)
 
 static void
 screenshot_response (GDBusConnection *connection,
-                     const char *sender_name,
+                      const char *sender_name,
                      const char *object_path,
                      const char *interface_name,
                      const char *signal_name,
@@ -385,7 +407,7 @@ take_screenshot (GtkWidget *button, PortalTestWin *win)
   options = g_variant_builder_end (&opt_builder);
 
   xdp_screenshot_call_screenshot (win->screenshot,
-                                  win->window_handle ? win->window_handle : "",
+                                  win->window_handle,
                                   options,
                                   NULL,
                                   screenshot_called,
@@ -479,7 +501,7 @@ get_user_information (GtkWidget *button, PortalTestWin *win)
   g_variant_builder_init (&options, G_VARIANT_TYPE_VARDICT);
   g_variant_builder_add (&options, "{sv}", "reason", g_variant_new_string ("Allows portal-test to test the Account portal."));
   xdp_account_call_get_user_information (win->account,
-                                         win->window_handle ? win->window_handle : "",
+                                         win->window_handle,
                                          g_variant_builder_end (&options),
                                          NULL,
                                          get_user_information_called,
@@ -556,11 +578,133 @@ compose_email (GtkWidget *button, PortalTestWin *win)
   g_variant_builder_add (&options, "{sv}", "body", g_variant_new_string ("Test body"));
   g_variant_builder_add (&options, "{sv}", "attachments", g_variant_new_strv (strv, -1));
   xdp_email_call_compose_email (win->email,
-                                win->window_handle ? win->window_handle : "",
+                                win->window_handle,
                                 g_variant_builder_end (&options),
                                 NULL,
                                 compose_email_called,
                                 win);
+}
+
+static void
+get_accounts_response (GDBusConnection *connection,
+                       const char *sender_name,
+                       const char *object_path,
+                       const char *interface_name,
+                       const char *signal_name,
+                       GVariant *parameters,
+                       gpointer user_data)
+{
+  PortalTestWin *win = user_data;
+  guint32 response;
+  GVariant *results;
+
+  g_variant_get (parameters, "(u@a{sv})", &response, &results);
+
+  if (response == 0)
+    {
+      GVariant *accounts;
+      GVariantIter iter;
+      GString *s;
+      const char *provider_type;
+      const char *provider_name;
+      const char *account_id;
+      const char *user_id;
+      gboolean needs_attention;
+      gboolean disabled;
+      const char *icon_data;
+
+      g_message ("GetAccounts success");
+
+      g_print ("results: %s\n", g_variant_print (results, FALSE));
+      accounts = g_variant_lookup_value (results, "accounts", G_VARIANT_TYPE ("a(ssssbbay)"));
+      if (accounts)
+        {
+          g_variant_iter_init (&iter, accounts);
+          s = g_string_new ("");
+          while (g_variant_iter_next (&iter, "(&s&s&s&sbb^ay)",
+                                      &provider_type,
+                                      &provider_name,
+                                      &account_id,
+                                      &user_id,
+                                      &needs_attention,
+                                      &disabled,
+                                      &icon_data))
+           {
+             g_string_append_printf (s, "%s %s\n", provider_name, user_id);
+           }
+
+          gtk_label_set_label (GTK_LABEL (win->online_accounts_label), s->str);
+
+          g_string_free (s, TRUE);
+        }
+      else
+        {
+          gtk_label_set_label (GTK_LABEL (win->online_accounts_label), "no accounts");
+        }
+    }
+  else if (response == 1)
+    {
+      g_message ("GetAccounts canceled");
+      gtk_label_set_label (GTK_LABEL (win->online_accounts_label), "-");
+    }
+  else
+    {
+      g_message ("GetAccounts failed");
+      gtk_label_set_label (GTK_LABEL (win->online_accounts_label), ":-(");
+    }
+
+  if (win->get_accounts_response_signal_id != 0)
+    {
+      g_dbus_connection_signal_unsubscribe (connection,
+                                            win->get_accounts_response_signal_id);
+      win->get_accounts_response_signal_id = 0;
+    }
+}
+
+static void
+get_accounts_called (GObject *source,
+                     GAsyncResult *result,
+                     gpointer data)
+{
+  PortalTestWin *win = data;
+  g_autoptr(GError) error = NULL;
+  g_autofree char *handle = NULL;
+
+  if (!xdp_gnome_accounts_call_get_accounts_finish (win->gnome_accounts, &handle, result, &error))
+    {
+      g_warning ("GetAccounts error: %s", error->message);
+      return;
+    }
+
+  win->get_accounts_response_signal_id =
+    g_dbus_connection_signal_subscribe (g_dbus_proxy_get_connection (G_DBUS_PROXY (win->gnome_accounts)),
+                                        "org.freedesktop.portal.Desktop",
+                                        "org.freedesktop.portal.Request",
+                                        "Response",
+                                        handle,
+                                        NULL,
+                                        G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE,
+                                        get_accounts_response,
+                                        win, NULL);
+}
+
+static void
+get_accounts (GtkWidget *button, PortalTestWin *win)
+{
+  GVariantBuilder options;
+  const char *providers[2] = { "google", NULL };
+  const char *interfaces[2] = { "org.gnome.OnlineAccounts.Mail", NULL };
+
+  g_variant_builder_init (&options, G_VARIANT_TYPE_VARDICT);
+  g_variant_builder_add (&options, "{sv}", "providers", g_variant_new_strv (providers, -1));
+  g_variant_builder_add (&options, "{sv}", "interfaces", g_variant_new_strv (interfaces, -1));
+
+  xdp_gnome_accounts_call_get_accounts (win->gnome_accounts,
+                                        win->window_handle,
+                                        g_variant_builder_end (&options),
+                                        NULL,
+                                        get_accounts_called,
+                                        win);
 }
 
 static void
@@ -951,6 +1095,8 @@ obtain_handle (gpointer data)
     gdk_wayland_window_export_handle (window, handle_obtained, win, NULL);
   else if (GDK_IS_X11_WINDOW (window))
     win->window_handle = g_strdup_printf ("x11:%x", (guint32)gdk_x11_window_get_xid (window));
+  else
+    win->window_handle = g_strdup ("");
 
   return G_SOURCE_REMOVE;
 }
@@ -984,6 +1130,7 @@ portal_test_win_class_init (PortalTestWinClass *class)
   gtk_widget_class_bind_template_callback (widget_class, play_clicked);
   gtk_widget_class_bind_template_callback (widget_class, get_user_information);
   gtk_widget_class_bind_template_callback (widget_class, compose_email);
+  gtk_widget_class_bind_template_callback (widget_class, get_accounts);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, sandbox_status);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, network_status);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, monitor_name);
@@ -1000,6 +1147,7 @@ portal_test_win_class_init (PortalTestWinClass *class)
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, realname);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, avatar);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, save_how);
+  gtk_widget_class_bind_template_child (widget_class, PortalTestWin, online_accounts_label);
 }
 
 GtkApplicationWindow *
