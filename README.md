@@ -6,9 +6,9 @@ The portal interfaces are defined in [xdg-desktop-portal](https://github.com/fla
 
 A GTK+ implementation can be found in [xdg-desktop-portal-gtk](https://github.com/flatpak/xdg-desktop-portal-gtk).
 
-To use this test, use the build script in build/ to produce a flatpak of portal-test, then install it with
+To use this test, use the build script in flatpak/ to produce a flatpak of portal-test, then install it with
 
-    flatpak remote-add --user portal-test file:///path/to/repo
+    flatpak remote-add --user --no-gpg-verify portal-test file:///path/to/repo
     flatpak install --user portal-test org.gnome.PortalTest
 
 and run it with
