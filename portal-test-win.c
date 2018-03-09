@@ -42,6 +42,7 @@ struct _PortalTestWin
   GProxyResolver *resolver;
 
   GtkWidget *image;
+  GtkWidget *interactive;
   XdpScreenshot *screenshot;
   char *screenshot_handle;
   guint screenshot_response_signal_id;
@@ -382,6 +383,7 @@ take_screenshot (GtkWidget *button, PortalTestWin *win)
 
   g_variant_builder_init (&opt_builder, G_VARIANT_TYPE_VARDICT);
   g_variant_builder_add (&opt_builder, "{sv}", "modal", g_variant_new_boolean (TRUE));
+  g_variant_builder_add (&opt_builder, "{sv}", "interactive", g_variant_new_boolean (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (win->interactive))));
   options = g_variant_builder_end (&opt_builder);
 
   xdp_screenshot_call_screenshot (win->screenshot,
@@ -990,6 +992,7 @@ portal_test_win_class_init (PortalTestWinClass *class)
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, proxies);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, resolver_name);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, image);
+  gtk_widget_class_bind_template_child (widget_class, PortalTestWin, interactive);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, encoding);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, ack_image);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, inhibit_idle);

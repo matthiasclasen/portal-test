@@ -205,15 +205,30 @@
           </packing>
         </child>
         <child>
-          <object class="GtkButton">
+          <object class="GtkBox">
             <property name="visible">1</property>
-            <property name="label">Screenshot</property>
-            <signal name="clicked" handler="take_screenshot"/>
+            <property name="hexpand">0</property>
+            <property name="orientation">horizontal</property>
+            <property name="spacing">6</property>
+            <child>
+              <object class="GtkButton">
+                <property name="visible">1</property>
+                <property name="hexpand">1</property>
+                <property name="label">Screenshot</property>
+                <signal name="clicked" handler="take_screenshot"/>
+              </object>
+            </child>
+            <child>
+              <object class="GtkCheckButton" id="interactive">
+                <property name="visible">1</property>
+                <property name="tooltip-text">Show options</property>
+              </object>
+            </child>
           </object>
           <packing>
             <property name="left-attach">1</property>
             <property name="top-attach">5</property>
-          </packing>
+         </packing>
         </child>
         <child>
           <object class="GtkImage" id="image">
