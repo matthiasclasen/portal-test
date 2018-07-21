@@ -14,6 +14,7 @@
 #include "portal-test-app.h"
 #include "portal-test-win.h"
 #include "screenshot-portal.h"
+#include "screencast-portal.h"
 #include "account-portal.h"
 #include "email-portal.h"
 
@@ -64,6 +65,13 @@ struct _PortalTestWin
 
   XdpEmail *email;
   guint email_response_signal_id;
+
+  XdpScreenCast *screencast;
+  char *screencast_session;
+  guint screencast_response_signal_id;
+
+  GtkWidget *screencast_label;
+  GtkWidget *screencast_toggle;
 };
 
 struct _PortalTestWinClass
@@ -149,6 +157,11 @@ portal_test_win_init (PortalTestWin *win)
                                                  "org.freedesktop.portal.Desktop",
                                                  "/org/freedesktop/portal/desktop",
                                                  NULL, NULL);
+  win->screencast = xdp_screen_cast_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
+                                                            G_DBUS_PROXY_FLAGS_NONE,
+                                                            "org.freedesktop.portal.Desktop",
+                                                            "/org/freedesktop/portal/desktop",
+                                                            NULL, NULL);
 }
 
 static void
@@ -376,7 +389,7 @@ screenshot_called (GObject *source,
 }
 
 static void
-take_screenshot (GtkWidget *button, PortalTestWin *win)
+take_screenshot (GtkButton *button, PortalTestWin *win)
 {
   GVariantBuilder opt_builder;
   GVariant *options;
@@ -392,6 +405,288 @@ take_screenshot (GtkWidget *button, PortalTestWin *win)
                                   NULL,
                                   screenshot_called,
                                   win);
+}
+
+static void
+start_response (GDBusConnection *connection,
+                const char *sender_name,
+                const char *object_path,
+                const char *interface_name,
+                const char *signal_name,
+                GVariant *parameters,
+                gpointer user_data)
+{
+  PortalTestWin *win = user_data;
+  guint32 response;
+  GVariant *options;
+
+  g_variant_get (parameters, "(u@a{sv})", &response, &options);
+
+  if (response == 0)
+    {
+      guint id;
+      g_autoptr(GVariantIter) iter = NULL;
+      GVariant *props;
+      g_autoptr (GString) s = NULL;
+
+      s = g_string_new ("");
+
+      g_variant_lookup (options, "streams", "a(ua{sv})", &iter);
+      while (g_variant_iter_next (iter, "(u@a{sv})", &id, &props))
+        {
+          int x, y, w, h;
+          g_variant_lookup (props, "position", "(ii)", &x, &y);
+          g_variant_lookup (props, "size", "(ii)", &w, &h);
+          if (s->len > 0)
+            g_string_append (s, "\n");
+          g_string_append_printf (s, "Stream %d: %dx%d @ %d,%d", id, w, y, x, y);
+          g_variant_unref (props);
+        }
+      gtk_label_set_label (GTK_LABEL (win->screencast_label), s->str);
+    }
+  else
+    {
+      g_warning ("Start returned an error (%d)\n", response);
+      g_clear_pointer (&win->screencast_session, g_free);
+      gtk_label_set_label (GTK_LABEL (win->screencast_label), "");
+      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (win->screencast_toggle), FALSE);
+    }
+
+  if (win->screencast_response_signal_id != 0)
+    {
+      g_dbus_connection_signal_unsubscribe (connection,
+                                            win->screencast_response_signal_id);
+      win->screencast_response_signal_id = 0;
+    }
+}
+  
+static void
+start_called (GObject *source,
+              GAsyncResult *res,
+              gpointer data)
+{
+  PortalTestWin *win = data;
+  g_autoptr(GError) error = NULL;
+  g_autofree char *handle = NULL;
+
+  if (!xdp_screen_cast_call_start_finish (win->screencast, &handle, res, &error))
+    {
+      g_warning ("Screencast Start error: %s", error->message);
+      return;
+    }
+
+  g_assert (win->screencast_response_signal_id == 0);
+
+  win->screencast_response_signal_id =
+    g_dbus_connection_signal_subscribe (g_dbus_proxy_get_connection (G_DBUS_PROXY (win->screencast)),
+                                        "org.freedesktop.portal.Desktop",
+                                        "org.freedesktop.portal.Request",
+                                        "Response",
+                                        handle,
+                                        NULL,
+                                        G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE,
+                                        start_response,
+                                        win, NULL);
+}
+
+static void
+select_sources_response (GDBusConnection *connection,
+                         const char *sender_name,
+                         const char *object_path,
+                         const char *interface_name,
+                         const char *signal_name,
+                         GVariant *parameters,
+                         gpointer user_data)
+{
+  PortalTestWin *win = user_data;
+  guint32 response;
+  GVariant *options;
+
+  g_variant_get (parameters, "(u@a{sv})", &response, &options);
+
+  if (response == 0)
+    {
+      g_autoptr(GError) error = NULL;
+       GVariantBuilder opt_builder;
+  
+      g_variant_builder_init (&opt_builder, G_VARIANT_TYPE_VARDICT);
+      xdp_screen_cast_call_start (win->screencast,
+                                  win->screencast_session,
+                                  win->window_handle ? win->window_handle : "",
+                                  g_variant_builder_end (&opt_builder),
+                                  NULL,
+                                  start_called,
+                                  win);
+    }
+  else
+    {
+      g_warning ("SelectSources returned an error (%d)\n", response);
+    }
+
+  if (win->screencast_response_signal_id != 0)
+    {
+      g_dbus_connection_signal_unsubscribe (connection,
+                                            win->screencast_response_signal_id);
+      win->screencast_response_signal_id = 0;
+    }
+}
+
+static void
+select_sources_called (GObject *source,
+                       GAsyncResult *res,
+                       gpointer data)
+{
+  PortalTestWin *win = data;
+  g_autoptr(GError) error = NULL;
+  g_autofree char *handle = NULL;
+
+  if (!xdp_screen_cast_call_select_sources_finish (win->screencast, &handle, res, &error))
+    {
+      g_warning ("Screencast SelectSources error: %s", error->message);
+      return;
+    }
+
+  g_assert (win->screencast_response_signal_id == 0);
+
+  win->screencast_response_signal_id =
+    g_dbus_connection_signal_subscribe (g_dbus_proxy_get_connection (G_DBUS_PROXY (win->screencast)),
+                                        "org.freedesktop.portal.Desktop",
+                                        "org.freedesktop.portal.Request",
+                                        "Response",
+                                        handle,
+                                        NULL,
+                                        G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE,
+                                        select_sources_response,
+                                        win, NULL);
+}
+
+static void
+create_session_response (GDBusConnection *connection,
+                         const char *sender_name,
+                         const char *object_path,
+                         const char *interface_name,
+                         const char *signal_name,
+                         GVariant *parameters,
+                         gpointer user_data)
+{
+  PortalTestWin *win = user_data;
+  guint32 response;
+  GVariant *options;
+
+  g_variant_get (parameters, "(u@a{sv})", &response, &options);
+
+  if (response == 0)
+    {
+      g_autoptr(GError) error = NULL;
+      const char *handle = NULL;
+      GVariantBuilder opt_builder;
+
+      g_variant_lookup (options, "session_handle", "&s", &handle);
+
+      if (handle == NULL)
+        {
+          g_warning ("Did not get a session handle\n");
+          return;
+        }
+
+      win->screencast_session = g_strdup (handle);
+
+      g_variant_builder_init (&opt_builder, G_VARIANT_TYPE_VARDICT);
+      g_variant_builder_add (&opt_builder, "{sv}", "types", g_variant_new_uint32 (1));
+      g_variant_builder_add (&opt_builder, "{sv}", "multiple", g_variant_new_boolean (TRUE));
+      xdp_screen_cast_call_select_sources (win->screencast,
+                                           win->screencast_session,
+                                           g_variant_builder_end (&opt_builder),
+                                           NULL,
+                                           select_sources_called,
+                                           win);
+    }
+  else
+    {
+      g_warning ("CreateSession returned an error (%d)\n", response);
+    }
+
+  if (win->screencast_response_signal_id != 0)
+    {
+      g_dbus_connection_signal_unsubscribe (connection,
+                                            win->screencast_response_signal_id);
+      win->screencast_response_signal_id = 0;
+    }
+}
+
+static void
+create_session_called (GObject *source,
+                       GAsyncResult *res,
+                       gpointer data)
+{
+  PortalTestWin *win = data;
+  g_autoptr(GError) error = NULL;
+  g_autofree char *handle = NULL;
+
+  if (!xdp_screen_cast_call_create_session_finish (win->screencast, &handle, res, &error))
+    {
+      g_warning ("Screencast CreateSession error: %s", error->message);
+      return;
+    }
+
+  win->screencast_response_signal_id =
+    g_dbus_connection_signal_subscribe (g_dbus_proxy_get_connection (G_DBUS_PROXY (win->screencast)),
+                                        "org.freedesktop.portal.Desktop",
+                                        "org.freedesktop.portal.Request",
+                                        "Response",
+                                        handle,
+                                        NULL,
+                                        G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE,
+                                        create_session_response,
+                                        win, NULL);
+}
+
+static void
+start_screencast (PortalTestWin *win)
+{
+  GVariantBuilder options;
+
+  g_clear_pointer (&win->screencast_session, g_free);
+
+  g_variant_builder_init (&options, G_VARIANT_TYPE_VARDICT);
+  g_variant_builder_add (&options, "{sv}", "session_handle_token", g_variant_new_string ("s"));
+  xdp_screen_cast_call_create_session (win->screencast,
+                                       g_variant_builder_end (&options),
+                                       NULL,
+                                       create_session_called,
+                                       win);
+}
+
+static void
+stop_screencast (PortalTestWin *win)
+{
+  if (win->screencast_session != NULL)
+    {
+      g_dbus_connection_call (g_dbus_proxy_get_connection (G_DBUS_PROXY (win->screencast)),
+                              "org.freedesktop.portal.Desktop",
+                              win->screencast_session,
+                              "org.freedesktop.portal.Session",
+                              "Close",
+                              NULL,
+                              NULL,
+                              0,
+                              -1,
+                              NULL,
+                              NULL,
+                              NULL);
+      g_clear_pointer (&win->screencast_session, g_free);
+      gtk_label_set_label (GTK_LABEL (win->screencast_label), "");
+    }
+}
+
+static void
+screencast_toggled (GtkToggleButton *button, 
+                    PortalTestWin *win)
+{
+  if (gtk_toggle_button_get_active (button))
+    start_screencast (win);
+  else
+    stop_screencast (win);
 }
 
 static void
@@ -980,6 +1275,7 @@ portal_test_win_class_init (PortalTestWinClass *class)
   gtk_widget_class_bind_template_callback (widget_class, save_dialog);
   gtk_widget_class_bind_template_callback (widget_class, open_local);
   gtk_widget_class_bind_template_callback (widget_class, take_screenshot);
+  gtk_widget_class_bind_template_callback (widget_class, screencast_toggled);
   gtk_widget_class_bind_template_callback (widget_class, notify_me);
   gtk_widget_class_bind_template_callback (widget_class, print_cb);
   gtk_widget_class_bind_template_callback (widget_class, inhibit_changed);
@@ -1003,6 +1299,8 @@ portal_test_win_class_init (PortalTestWinClass *class)
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, realname);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, avatar);
   gtk_widget_class_bind_template_child (widget_class, PortalTestWin, save_how);
+  gtk_widget_class_bind_template_child (widget_class, PortalTestWin, screencast_label);
+  gtk_widget_class_bind_template_child (widget_class, PortalTestWin, screencast_toggle);
 }
 
 GtkApplicationWindow *

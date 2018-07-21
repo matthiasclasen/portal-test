@@ -18,6 +18,10 @@ screenshot = gnome.gdbus_codegen('screenshot-portal',
                             'org.freedesktop.portal.Screenshot.xml',
                             interface_prefix: 'org.freedesktop.portal.',
                             namespace: 'Xdp')
+screencast = gnome.gdbus_codegen('screencast-portal',
+                            'org.freedesktop.portal.ScreenCast.xml',
+                            interface_prefix: 'org.freedesktop.portal.',
+                            namespace: 'Xdp')
 account = gnome.gdbus_codegen('account-portal',
                             'org.freedesktop.portal.Account.xml',
                             interface_prefix: 'org.freedesktop.portal.',
@@ -34,6 +38,7 @@ src = ['main.c',
        'portal-test-win.c',
        resources,
        screenshot,
+       screencast,
        account,
        email]
 
