@@ -1,6 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <!-- interface-requires gtk+ 3.8 -->
+  <object class="GtkDialog" id="update_dialog">
+    <property name="transient-for">PortalTestWin</property>
+    <child internal-child="vbox">
+      <object class="GtkBox">
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">1</property>
+            <property name="label">This application has been updated!</property>
+          </object>
+        </child>
+      </object>
+    </child>
+    <child type="action">
+      <object class="GtkButton" id="ok">
+        <property name="visible">1</property>
+        <property name="label">Restart Now</property>
+      </object>
+    </child>
+    <child type="action">
+      <object class="GtkButton" id="close">
+        <property name="visible">1</property>
+        <property name="label">Close</property>
+      </object>
+    </child>
+    <action-widgets>
+      <action-widget response="cancel">close</action-widget>
+      <action-widget response="ok">ok</action-widget>
+    </action-widgets>
+  </object>
   <object class="GtkFileChooserDialog" id="filechooser">
     <property name="action">open</property>
     <property name="modal">True</property>
