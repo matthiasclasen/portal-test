@@ -121,6 +121,15 @@ update_monitor_changed (GFileMonitor      *monitor,
 }
 
 static void
+update_dialog_response (GtkDialog     *dialog,
+                        int            response,
+                        PortalTestWin *win)
+{
+  if (response == GTK_RESPONSE_OK)
+    portal_test_app_restart (PORTAL_TEST_APP (gtk_window_get_application (GTK_WINDOW (win))));
+}
+
+static void
 portal_test_win_init (PortalTestWin *win)
 {
   const char *status;
@@ -181,6 +190,8 @@ portal_test_win_init (PortalTestWin *win)
   file = g_file_new_for_path ("/app/.updated");
   win->update_monitor = g_file_monitor_file (file, 0, NULL, NULL);
   g_signal_connect (win->update_monitor, "changed", G_CALLBACK (update_monitor_changed), win);
+
+  g_signal_connect (win->update_dialog, "response", G_CALLBACK (update_dialog_response), win);
 }
 
 static void
