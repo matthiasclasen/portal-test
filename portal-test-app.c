@@ -3,6 +3,7 @@
 
 #include "portal-test-app.h"
 #include "portal-test-win.h"
+#include "flatpak-portal.h"
 
 struct _PortalTestApp
 {
@@ -76,54 +77,48 @@ acktivate (GSimpleAction *action,
 }
 
 static void
-spawned (GObject *source,
-         GAsyncResult *res,
-         gpointer data)
+spawned_cb (GObject *source,
+            GAsyncResult *res,
+            gpointer data)
 {
-  GDBusConnection *bus = G_DBUS_CONNECTION (source);
+  XdpFlatpak *flatpak = XDP_FLATPAK (source);
   g_autoptr(GError) error = NULL;
-  g_autoptr(GVariant) ret = NULL;
   guint32 pid;
 
-  ret = g_dbus_connection_call_finish (bus, res, &error);
-
-  if (!ret)
+  if (!xdp_flatpak_call_spawn_finish (flatpak, &pid, NULL, res, &error))
     {
       g_warning ("Restart failed: %s", error->message);
       return;
     }
 
-  g_variant_get (ret, "(u)", &pid);
   g_message ("Restarted with pid %d", pid);
 }
 
 void
 portal_test_app_restart (PortalTestApp *app)
 {
-  GDBusConnection *bus;
-  const char *strv[3] = { "portal-test", "--gapplication-replace",  NULL };
-
-  bus = g_application_get_dbus_connection (G_APPLICATION (app));
+  g_autoptr(XdpFlatpak) flatpak = NULL;
+  const char *argv[3] = { "/app/bin/portal-test", "--gapplication-replace",  NULL };
+  g_autofree char *cwd = g_get_current_dir ();
+  guint flags = 2; /* Respawn the latest */
 
   g_message ("Calling org.freedesktop.portal.Flatpak.Spawn");
-  g_dbus_connection_call (bus,
-                          "org.freedesktop.portal.Flatpak",
-                          "/org/freedesktop/portal/Flatpak",
-                          "org.freedesktop.portal.Flatpak",
-                          "Spawn",
-                          g_variant_new ("(@ay@aay@a{uh}@a{ss}u@a{sv})",
-                                         g_variant_new_bytestring ("/"),
-                                         g_variant_new_bytestring_array (strv, -1),
-                                         g_variant_new_array (G_VARIANT_TYPE ("{uh}"), NULL, 0),
-                                         g_variant_new_array (G_VARIANT_TYPE ("{ss}"), NULL, 0),
-                                         2,
-                                         g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0)),
-                          G_VARIANT_TYPE ("(u)"),
-                          0,
-                          -1,
+
+  flatpak = xdp_flatpak_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
+                                                G_DBUS_PROXY_FLAGS_NONE,
+                                                "org.freedesktop.portal.Flatpak",
+                                                "/org/freedesktop/portal/Flatpak",
+                                                NULL, NULL);
+
+  xdp_flatpak_call_spawn (flatpak,
+                          cwd, argv,
+                          g_variant_new_array (G_VARIANT_TYPE ("{uh}"), NULL, 0),
+                          g_variant_new_array (G_VARIANT_TYPE ("{ss}"), NULL, 0),
+                          flags,
+                          g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0),
                           NULL,
-                          spawned,
-                          app);
+                          NULL,
+                          spawned_cb, app);
 }
 
 static void

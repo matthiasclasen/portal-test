@@ -30,6 +30,10 @@ email = gnome.gdbus_codegen('email-portal',
                             'org.freedesktop.portal.Email.xml',
                             interface_prefix: 'org.freedesktop.portal.',
                             namespace: 'Xdp')
+flatpak = gnome.gdbus_codegen('flatpak-portal',
+                              'org.freedesktop.portal.Flatpak.xml',
+                              interface_prefix: 'org.freedesktop.portal.',
+                              namespace: 'Xdp')
 
 src = ['main.c',
        'portal-test-app.h',
@@ -40,7 +44,8 @@ src = ['main.c',
        screenshot,
        screencast,
        account,
-       email]
+       email,
+       flatpak]
 
 executable('portal-test',
            src,
