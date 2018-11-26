@@ -10,8 +10,5 @@ main (int argc, char *argv[])
 
   g_message ("Starting org.gnome.PortalTest");
 
-  if (g_strv_contains ((const char * const *)argv, "--replace"))
-    portal_test_app_stop_running_instance ();
-
   return g_application_run (portal_test_app_new (), argc, argv);
 }
