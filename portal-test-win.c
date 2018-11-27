@@ -895,10 +895,18 @@ notify_me (GtkButton *button, PortalTestWin *win)
 {
   GtkApplication *app = gtk_window_get_application (GTK_WINDOW (win));
   g_autoptr(GNotification) notification = NULL;
+  g_autoptr(GBytes) bytes = NULL;
+  g_autoptr(GIcon) icon = NULL;
 
   gtk_widget_hide (win->ack_image);
 
+  bytes = g_resources_lookup_data ("/org/gtk/libgtk/inspector/logo.png",
+                                   G_RESOURCE_LOOKUP_FLAGS_NONE,
+                                   NULL);
+  icon = g_bytes_icon_new (bytes);
+
   notification = g_notification_new ("Notify me");
+  g_notification_set_icon (notification, icon);
   g_notification_set_body (notification, "Really important information would ordinarily appear here");
   g_notification_add_button (notification, "Yup", "app.ack");
 
